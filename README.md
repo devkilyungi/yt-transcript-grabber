@@ -15,6 +15,24 @@ Then open http://localhost:8765.
 
 For a production build, run `npm run build` and then `npm start` (same port). `npm run typecheck` runs the TypeScript compiler without emitting anything.
 
+## Desktop app (macOS)
+
+The same app also comes as a Mac app, so you can open it from the Dock without keeping a dev server running. It's an Electron shell that starts the production server in the background and shows it in its own window.
+
+```
+npm run app:install
+```
+
+This builds the app and copies `Transcript Grabber.app` into `/Applications`. Open it from there, then right-click its Dock icon and choose Options → Keep in Dock. Run the command again after pulling or changing code, because the app bundles a snapshot of the build.
+
+- `npm run app` builds the server and opens it in Electron without packaging, which is the quickest way to try a change.
+- `npm run app:package` builds `dist/mac-arm64/Transcript Grabber.app` without installing it.
+- `npm run app:icon` re-renders `build/icon.png` from `build/icon.svg`.
+
+The app's server listens on `127.0.0.1:8766`, which is separate from the dev server's port, so both can run at once. It's only reachable from your own machine. The port is fixed because your notes, settings and recent videos are kept in the browser storage for that address. Closing the window keeps the app in the Dock, and quitting it stops the server. The server's log is at `~/Library/Logs/Transcript Grabber/server.log`.
+
+The app is built on your machine and isn't code-signed, which is fine for running it yourself. To give it to someone else, it would need signing and notarising with an Apple Developer ID.
+
 ## Features
 
 - Paragraphed transcript with clickable timestamps.
@@ -27,7 +45,7 @@ For a production build, run `npm run build` and then `npm start` (same port). `n
 - "Copy for summary", which prepends a summary prompt to the transcript.
 - Downloads as TXT, Markdown, SRT, WebVTT, JSON and CSV.
 - Bulk mode for a playlist or several pasted links: a queue that runs two at a time, with pause, resume and retry, and combined copy and download.
-- A bookmarklet that opens the current YouTube page here.
+- A bookmarklet that opens the current YouTube page here (browser version only).
 - Recent videos.
 - Light and dark theme, toggled with the D key.
 
@@ -76,7 +94,7 @@ Errors are returned as `{ error, code, detail }` with an HTTP status. `code` is 
 - Some caption tracks require PO tokens. These are detected and skipped.
 - Playlists are capped at the first 200 videos.
 - A video with no captions has no transcript.
-- On-device translation needs a browser with the Translator API, such as recent Chrome.
+- On-device translation needs a browser with the Translator API, such as recent Chrome. The desktop app doesn't have it, so there translation relies on YouTube alone.
 
 ## Hosting it yourself
 

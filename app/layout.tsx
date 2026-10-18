@@ -13,15 +13,16 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
-// Apply the saved theme before first paint to avoid a flash.
-const themeScript = `try { const t = localStorage.getItem('tg.theme'); if (t) document.documentElement.dataset.theme = t; } catch {}`;
+// Before first paint: apply the saved theme, and mark the desktop app (its preload defines `window.desktop`).
+const headScript = `try { const t = localStorage.getItem('tg.theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+if (window.desktop) document.documentElement.dataset.desktop = '';`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    // The theme script sets data-theme before React hydrates.
+    // The head script sets data-theme and data-desktop before React hydrates.
     <html lang="en" className={`${sans.variable} ${serif.variable}`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: headScript }} />
       </head>
       <body>{children}</body>
     </html>

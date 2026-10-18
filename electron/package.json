@@ -1,0 +1,9 @@
+{
+  "name": "transcript-grabber",
+  "productName": "Transcript Grabber",
+  "version": "2.0.0",
+  "description": "Paste a YouTube link, get a clean, paragraphed transcript.",
+  "author": "Victor Kilyungi",
+  "license": "AGPL-3.0-only",
+  "main": "main.cjs"
+}

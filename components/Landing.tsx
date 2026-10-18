@@ -92,7 +92,7 @@ function Bookmarklet() {
   };
 
   return (
-    <section className="section">
+    <section className="section bookmarklet-tip">
       <div className="tip">
         <span className="tip-icon"><BookmarkIcon /></span>
         <div className="tip-text">
