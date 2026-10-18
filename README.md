@@ -78,6 +78,22 @@ Errors are returned as `{ error, code, detail }` with an HTTP status. `code` is 
 - A video with no captions has no transcript.
 - On-device translation needs a browser with the Translator API, such as recent Chrome.
 
+## Hosting it yourself
+
+Run it locally. The app works out of the box on a home connection, but not on a normal cloud host. We tried Vercel: the site, chapters and playlists worked, but YouTube blocked almost every transcript request from Vercel's servers. YouTube does this to cloud IP ranges in general, so the same happens on any similar host.
+
+If you want a hosted version, there are two ways around it. Neither is built in yet.
+
+1. **Send the server's YouTube requests through a residential proxy.** Keep the app as it is, but route the requests in `lib/youtube/*` through a paid residential or rotating proxy, so YouTube sees home IPs instead of a data centre. It's the smallest code change, but it costs money and adds a third party that sees every request.
+2. **Fetch transcripts in the visitor's browser.** Extend the bookmarklet so it fetches the transcript on the YouTube page itself, from the visitor's own IP and session, then hands it to the site to display. The server then only serves the page, chapters and playlists, so any static-friendly host works. The trade-off is an extra click on YouTube, and bulk mode and YouTube's own translation still go through the server. A browser extension could do the same without the extra click.
+
 ## Why not Rust?
 
 The server could be written in Rust, for example with axum and a crate like rustypipe or yt-transcript-rs, but it isn't worth it. The server's work is a few HTTP requests and some XML parsing per video. The bottleneck is YouTube's rate limiting and bot detection, not CPU. The extraction code also breaks whenever YouTube changes something, and the maintained libraries that track those changes (youtubei.js, youtube-transcript-api, yt-dlp) are in JS and Python. Keeping one language across client and server also means the shared types in `lib/types.ts` cover both sides.
+
+## Licence
+
+[GNU AGPL-3.0](LICENSE), with one extra term in [NOTICE](NOTICE). You're free to use, change and host this project, but:
+
+- **Credit it.** Any copy, fork or hosted version must show a visible "Based on Transcript Grabber by Victor Kilyungi" with a link back to this repo, both in the site itself and in its docs.
+- **Share your changes.** If you run a modified version as a website, you must offer its users the full source code under the same licence. This is what the AGPL adds to the GPL: the plain GPL only applies when the software is handed out, so a site could change it and never publish the code.

@@ -337,7 +337,23 @@ export function App({ initial }: { initial: InitialQuery }) {
 
       {view === 'bulk' && <BulkView queue={queue} prefs={prefs} onOpen={(id, item) => openVideo(id, { data: item, fromBulk: true })} />}
 
+      <Footer />
       <Toast />
     </>
+  );
+}
+
+const REPO = 'https://github.com/devkilyungi/yt-transcript-grabber';
+
+/** Credit and source link. The AGPL attribution term in NOTICE requires forks to keep this. */
+function Footer() {
+  return (
+    <footer className="site-footer">
+      Transcript Grabber by Victor Kilyungi
+      <span aria-hidden="true">·</span>
+      <a href={REPO} target="_blank" rel="noopener">Source on GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href={`${REPO}/blob/main/LICENSE`} target="_blank" rel="noopener">AGPL-3.0</a>
+    </footer>
   );
 }
