@@ -33,7 +33,9 @@ export function BulkView({ queue, prefs, onOpen }: {
   const n = s.items.length;
   const pct = n ? Math.round(((done.length + failed.length) / n) * 100) : 0;
 
-  const status = s.blocked ? 'YouTube is limiting requests from this network. Paused; resume in a minute.'
+  const wait = s.resumeAt ? Math.max(0, Math.ceil((s.resumeAt - Date.now()) / 1000)) : 0;
+  const status = s.blocked ? 'YouTube is limiting requests from this network. '
+      + (s.resumeAt ? `Trying again in ${wait < 60 ? `${wait}s` : `${Math.floor(wait / 60)}m ${wait % 60}s`}.` : 'Paused; resume in a few minutes.')
     : !n ? ''
     : !left ? (failed.length ? `${done.length} ready, ${failed.length} failed` : `All ${plural(done.length, 'transcript')} ready`)
     : s.paused ? `Paused · ${done.length} of ${n} ready`
