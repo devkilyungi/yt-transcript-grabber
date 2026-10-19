@@ -239,7 +239,9 @@ export function ResultView(props: ResultProps) {
       </main>
 
       <NotesPopover readerRef={readerRef} notes={notes} />
-      <button className="follow-pill" type="button" hidden={!follow.lost} onClick={resumeFollow}>
+      <button className="follow-pill" type="button" hidden={!follow.lost}
+        // Blur first: hiding a focused button makes Chromium cancel the smooth scroll back.
+        onClick={e => { e.currentTarget.blur(); resumeFollow(); }}>
         <span className="dot" /> Back to now
       </button>
       <button className="undock" type="button" title="Close mini player" aria-label="Close mini player" hidden={!player.docked} onClick={player.dismiss}>
