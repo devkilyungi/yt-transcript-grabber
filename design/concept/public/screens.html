@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en" data-splash>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Transcript Grabber</title>
+  <meta name="description" content="Paste a YouTube link and get a clean, paragraphed transcript.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f3f1f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111012" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/atkinson-next-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/atkinson-mono-500.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/courier-prime-700.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="js/gate.js"></script>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/house.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/screens.js"></script>
+</head>
+<body>
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" pathLength="1"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" pathLength="1"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z M12 10v4.5 M12 17.6v.1"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5 M12 7.6v.1"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="i-replay" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.6 M4 4v4.6h4.6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13l3-8h12l3 8v6H3z M3 13h5l1.5 2.5h5L16 13h5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z M8.5 12l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18 M10.6 5.1A9.8 9.8 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-2.7 3.6 M6.6 6.6A16.5 16.5 0 0 0 2.5 12S6 19 12 19a9.4 9.4 0 0 0 5.4-1.6 M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7L20 8.6 M20 4v4.6h-4.6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.4-4.4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h7 M14.5 4.5l5 5L10 19H5v-5z"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 4h14v11l-5 5H5z M14 20v-5h5 M8.5 9h7 M8.5 12.5h4"/></symbol>
+</svg>
+
+<div class="splash" id="splash" aria-hidden="true">
+  <span class="door a"></span><span class="door b"></span>
+  <div class="splash-stage">
+    <svg class="splash-mark mk mk-marker" viewBox="0 0 32 32" aria-hidden="true"><rect class="tile" width="32" height="32" rx="7"/><path class="hi" d="M7 16.5h18" pathLength="1"/><path class="ln" d="M9 10.5h14" pathLength="1"/><path class="ln d1" d="M9 16.5h14" pathLength="1"/><path class="ln d2" d="M9 22.5h9" pathLength="1"/></svg>
+<svg class="splash-mark mk mk-ditto" viewBox="0 0 32 32" aria-hidden="true"><rect class="tile" width="32" height="32" rx="7"/><circle class="hi-thin" cx="11.5" cy="11.5" r="4.5" pathLength="1"/><path class="ln" d="M16 11.5h8" pathLength="1"/><path class="ln d1" d="M8 20h16" pathLength="1"/><path class="ln d2" d="M8 24.5h10" pathLength="1"/></svg>
+<svg class="splash-mark mk mk-steno" viewBox="0 0 32 32" aria-hidden="true"><rect class="tile" width="32" height="32" rx="7"/><path class="hi-thin" d="M16 6v20" pathLength="1"/><path class="ln" d="M6.5 13c1.6-3.2 4.8-3.2 6 0" pathLength="1"/><path class="ln d1" d="M19.5 17c1.6 3.2 4.8 3.2 6 0" pathLength="1"/><path class="ln d2" d="M6.5 21h6" pathLength="1"/></svg>
+    <span class="splash-word">Transcript Grabber</span>
+  </div>
+</div>
+
+<header class="bar">
+  <div class="bar-in">
+    <a class="brand" href="screens.html?s=home" aria-label="Transcript Grabber, home">
+      <svg class="brand-mark mk mk-marker" viewBox="0 0 32 32" aria-hidden="true"><rect class="tile" width="32" height="32" rx="7"/><path class="hi" d="M7 16.5h18" pathLength="1"/><path class="ln" d="M9 10.5h14" pathLength="1"/><path class="ln d1" d="M9 16.5h14" pathLength="1"/><path class="ln d2" d="M9 22.5h9" pathLength="1"/></svg>
+<svg class="brand-mark mk mk-ditto" viewBox="0 0 32 32" aria-hidden="true"><rect class="tile" width="32" height="32" rx="7"/><circle class="hi-thin" cx="11.5" cy="11.5" r="4.5" pathLength="1"/><path class="ln" d="M16 11.5h8" pathLength="1"/><path class="ln d1" d="M8 20h16" pathLength="1"/><path class="ln d2" d="M8 24.5h10" pathLength="1"/></svg>
+<svg class="brand-mark mk mk-steno" viewBox="0 0 32 32" aria-hidden="true"><rect class="tile" width="32" height="32" rx="7"/><path class="hi-thin" d="M16 6v20" pathLength="1"/><path class="ln" d="M6.5 13c1.6-3.2 4.8-3.2 6 0" pathLength="1"/><path class="ln d1" d="M19.5 17c1.6 3.2 4.8 3.2 6 0" pathLength="1"/><path class="ln d2" d="M6.5 21h6" pathLength="1"/></svg>
+      <span>Transcript<b>.</b></span>
+    </a>
+    <nav class="links" id="menu" aria-label="Pages">
+      <a href="screens.html?s=recents" data-for="home recents loading result reading note error partial">Video</a>
+      <a href="screens.html?s=bulk" data-for="bulk">Playlist</a>
+      <div class="bar-tools">
+        <button class="icon-btn theme-toggle" id="theme" type="button" aria-label="Switch theme (D)"><span class="glyph"><svg class="icon sun" aria-hidden="true"><use href="#i-sun"/></svg><svg class="icon moon" aria-hidden="true"><use href="#i-moon"/></svg></span><span class="tool-label">Switch theme</span></button>
+      </div>
+    </nav>
+    <button class="icon-btn burger" id="burger" type="button" aria-label="Menu" aria-expanded="false" aria-controls="menu"><span><i></i><i></i><i></i></span></button>
+  </div>
+</header>
+
+<main class="main" id="main">
+<section class="page-enter screen" data-screen="home">
+<div class="hero"><h1>Read any video.</h1><p class="lede">Paste a YouTube link and get its transcript in paragraphs, ready to read, search, highlight or hand to Claude for a summary.</p><form class="stack grab-form" novalidate>
+  <div class="field"><label for="url">Video or playlist link</label>
+  <div class="grab"><input class="input" id="url" name="url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="youtube.com/watch?v=…">
+  <button class="btn primary lg go" type="submit"><span class="states"><span class="on">Get transcript</span><span class=""><span class="spinner" aria-hidden="true"></span>Getting it</span></span></button></div></div>
+  <div class="grab-opts">
+    <label class="select"><span class="sr">Language</span><select class="input"><option>Original language</option><option>English (auto)</option><option>Translate to English</option></select><svg class="icon" aria-hidden="true"><use href="#i-chev"/></svg></label>
+    <label class="switch"><span>Timestamps</span><input type="checkbox" role="switch" checked></label>
+    <label class="switch"><span>Paragraphs</span><input type="checkbox" role="switch" checked></label>
+  </div>
+</form></div>
+<div class="empty"><svg class="icon" aria-hidden="true"><use href="#i-inbox"/></svg><strong>Your recent videos</strong><p>Videos you open appear here, so you can come back to them.</p><button class="btn sample" type="button">Try a sample video</button></div>
+</section>
+<section class="page-enter screen" data-screen="recents">
+<div class="hero"><h1>Read any video.</h1><p class="lede">Paste a YouTube link and get its transcript in paragraphs, ready to read, search, highlight or hand to Claude for a summary.</p><form class="stack grab-form" novalidate>
+  <div class="field"><label for="url">Video or playlist link</label>
+  <div class="grab"><input class="input" id="url" name="url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="youtube.com/watch?v=…">
+  <button class="btn primary lg go" type="submit"><span class="states"><span class="on">Get transcript</span><span class=""><span class="spinner" aria-hidden="true"></span>Getting it</span></span></button></div></div>
+  <div class="grab-opts">
+    <label class="select"><span class="sr">Language</span><select class="input"><option>Original language</option><option>English (auto)</option><option>Translate to English</option></select><svg class="icon" aria-hidden="true"><use href="#i-chev"/></svg></label>
+    <label class="switch"><span>Timestamps</span><input type="checkbox" role="switch" checked></label>
+    <label class="switch"><span>Paragraphs</span><input type="checkbox" role="switch" checked></label>
+  </div>
+</form></div><section class="stack" aria-labelledby="rec-h"><div class="card-head"><h2 id="rec-h">Recent videos</h2><button class="btn ghost sm" type="button"><svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Clear</button></div><ul class="recents"><li><a class="card recent" href="screens.html?s=result"><span class="thumb" data-css="--h: 205"></span><span class="stack"><strong>How bridges hold up: forces for beginners</strong><small><span class="num">4:31</span> · <time datetime="2026-11-04">Today</time></small></span></a></li><li><a class="card recent" href="screens.html?s=result"><span class="thumb" data-css="--h: 28"></span><span class="stack"><strong>Sourdough starter, week one, every mistake I made</strong><small><span class="num">18:02</span> · <time datetime="2026-11-03">Yesterday</time></small></span></a></li><li><a class="card recent" href="screens.html?s=result"><span class="thumb" data-css="--h: 140"></span><span class="stack"><strong>A gentle introduction to the night sky in November</strong><small><span class="num">42:15</span> · <time datetime="2026-10-30">30 Oct</time></small></span></a></li><li><a class="card recent" href="screens.html?s=result"><span class="thumb" data-css="--h: 265"></span><span class="stack"><strong>Interview: rebuilding a 1970s synthesizer from parts</strong><small><span class="num">1:07:40</span> · <time datetime="2026-10-28">28 Oct</time></small></span></a></li></ul></section>
+</section>
+<section class="page-enter screen" data-screen="loading">
+<div class="hero"><h1>Read any video.</h1><p class="lede">Paste a YouTube link and get its transcript in paragraphs, ready to read, search, highlight or hand to Claude for a summary.</p><form class="stack grab-form" novalidate>
+  <div class="field"><label for="url">Video or playlist link</label>
+  <div class="grab"><input class="input" id="url" name="url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="youtube.com/watch?v=…" value="youtube.com/watch?v=dQ0bridge4">
+  <button class="btn primary lg go" type="submit" aria-busy="true"><span class="states"><span class="">Get transcript</span><span class="on"><span class="spinner" aria-hidden="true"></span>Getting it</span></span></button></div></div>
+  <div class="grab-opts">
+    <label class="select"><span class="sr">Language</span><select class="input"><option>Original language</option><option>English (auto)</option><option>Translate to English</option></select><svg class="icon" aria-hidden="true"><use href="#i-chev"/></svg></label>
+    <label class="switch"><span>Timestamps</span><input type="checkbox" role="switch" checked></label>
+    <label class="switch"><span>Paragraphs</span><input type="checkbox" role="switch" checked></label>
+  </div>
+</form></div>
+<div class="result" aria-busy="true"><div class="stack"><div class="player skel-box"></div><div class="skeleton late" hidden><i></i><i></i><i></i></div></div><div class="skeleton late" hidden><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+</section>
+<section class="page-enter screen" data-screen="result">
+<div class="result"><aside class="side"><div class="player"><span class="thumb" data-css="--h: 205"></span><span class="play"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg></span><span class="cap num">4:31</span></div>
+<div class="stack"><p class="video-title">How bridges hold up: forces for beginners</p><p class="meta"><span>Field Notes Engineering</span><span class="num">4:31</span><span>English, auto-generated</span></p></div>
+<section class="stack" aria-labelledby="ch-h"><p class="caps" id="ch-h">Chapters</p><ol class="chapters"><li><button type="button"><span class="num">0:00</span><span>Why bridges move</span></button></li><li><button type="button" aria-current="true"><span class="num">0:42</span><span>Beams</span></button></li><li><button type="button"><span class="num">2:18</span><span>Arches</span></button></li><li><button type="button"><span class="num">3:05</span><span>Cables and towers</span></button></li><li><button type="button"><span class="num">3:52</span><span>Why long bridges sway</span></button></li></ol></section></aside>
+<section class="stack" aria-label="Transcript"><div class="reader-head"><div class="row">
+  <button class="btn primary copy" type="button"><span class="states"><span class="on"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>Copy for summary</span><span><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Copied</span></span></button>
+  <label class="select"><span class="sr">Download format</span><select class="input"><option>Text (.txt)</option><option>Markdown (.md)</option><option>Subtitles (.srt)</option><option>WebVTT (.vtt)</option><option>JSON</option><option>CSV</option></select><svg class="icon" aria-hidden="true"><use href="#i-chev"/></svg></label>
+  <button class="btn dl" type="button"><svg class="icon" aria-hidden="true"><use href="#i-down"/></svg>Download</button>
+</div><button class="btn ghost sm find-open" type="button"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>Find<span class="kbd">⌘F</span></button></div>
+<p class="muted"><span class="num">6</span> paragraphs · <span class="num">712</span> words · about <span class="num">3</span> min to read</p>
+<article class="reader"><h2>Beams</h2><div class="para"><button class="t" type="button" aria-label="Play from 0:00">0:00</button><p>Bridges look still, but every one of them is moving. Traffic, wind and heat push on it all day, and the whole trick is giving those forces somewhere to go.</p></div><div class="para now" aria-current="true"><button class="t" type="button" aria-label="Play from 0:42">0:42</button><p>Start with the simplest kind, a beam. Put a plank across a stream and stand in the middle: the top of the plank squeezes together and the bottom stretches apart.</p></div><div class="para"><button class="t" type="button" aria-label="Play from 1:31">1:31</button><p>That squeeze is compression and the stretch is tension. Stone is good at the first and poor at the second, which is why old bridges are arches and not flat slabs.</p></div><h2>Arches</h2><div class="para"><button class="t" type="button" aria-label="Play from 2:18">2:18</button><p>An arch turns the weight sideways. Each stone leans on the next, so the load runs around the curve and down into the banks, and the banks have to push back just as hard.</p></div><div class="para"><button class="t" type="button" aria-label="Play from 3:05">3:05</button><p>Steel changed the rules because it handles tension well. Now you can hang a road from cables, and the towers only have to carry the weight straight down.</p></div><h2>Cables and towers</h2><div class="para"><button class="t" type="button" aria-label="Play from 3:52">3:52</button><p>Which brings us to the question people ask most: why do long bridges sway? The short answer is that they are meant to.</p></div></article></section></div>
+</section>
+<section class="page-enter screen" data-screen="reading">
+<div class="result"><aside class="side"><div class="player"><span class="thumb" data-css="--h: 205"></span><span class="play"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg></span><span class="cap num">4:31</span></div>
+<div class="stack"><p class="video-title">How bridges hold up: forces for beginners</p><p class="meta"><span>Field Notes Engineering</span><span class="num">4:31</span><span>English, auto-generated</span></p></div>
+<section class="stack" aria-labelledby="ch-h"><p class="caps" id="ch-h">Chapters</p><ol class="chapters"><li><button type="button"><span class="num">0:00</span><span>Why bridges move</span></button></li><li><button type="button"><span class="num">0:42</span><span>Beams</span></button></li><li><button type="button" aria-current="true"><span class="num">2:18</span><span>Arches</span></button></li><li><button type="button"><span class="num">3:05</span><span>Cables and towers</span></button></li><li><button type="button"><span class="num">3:52</span><span>Why long bridges sway</span></button></li></ol></section></aside>
+<section class="stack" aria-label="Transcript"><div class="reader-head"><div class="row">
+  <button class="btn primary copy" type="button"><span class="states"><span class="on"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>Copy for summary</span><span><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Copied</span></span></button>
+  <label class="select"><span class="sr">Download format</span><select class="input"><option>Text (.txt)</option><option>Markdown (.md)</option><option>Subtitles (.srt)</option><option>WebVTT (.vtt)</option><option>JSON</option><option>CSV</option></select><svg class="icon" aria-hidden="true"><use href="#i-chev"/></svg></label>
+  <button class="btn dl" type="button"><svg class="icon" aria-hidden="true"><use href="#i-down"/></svg>Download</button>
+</div></div><div class="find-bar" role="search"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input class="input" type="search" aria-label="Find in transcript" value="tension"><span class="count num" aria-live="polite">2 of 3</span>
+<button class="icon-btn" type="button" aria-label="Previous match"><svg class="icon" aria-hidden="true"><use href="#i-up"/></svg></button><button class="icon-btn" type="button" aria-label="Next match"><svg class="icon" aria-hidden="true"><use href="#i-down"/></svg></button><button class="icon-btn" type="button" aria-label="Close find"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+<article class="reader anchor"><h2>Beams</h2><div class="para"><button class="t" type="button" aria-label="Play from 0:00">0:00</button><p>Bridges look still, but every one of them is moving. Traffic, wind and heat push on it all day, and the whole trick is giving those forces somewhere to go.</p></div><div class="para"><button class="t" type="button" aria-label="Play from 0:42">0:42</button><p>Start with the simplest kind, a beam. Put a plank across a stream and stand in the middle: <mark class="hl">the top of the plank squeezes together</mark> and the bottom stretches apart.</p></div><div class="para now" aria-current="true"><button class="t" type="button" aria-label="Play from 1:31">1:31</button><p>That squeeze is compression and the stretch is <mark class="find current">tension</mark>. Stone is good at the first and poor at the second, which is why old bridges are arches and not flat slabs.</p></div><h2>Arches</h2><div class="para"><button class="t" type="button" aria-label="Play from 2:18">2:18</button><p>An arch turns the weight sideways. Each stone leans on the next, so the load runs around the curve and down into the banks, and the banks have to push back just as hard.</p></div><div class="para"><button class="t" type="button" aria-label="Play from 3:05">3:05</button><p><mark class="hl">Steel changed the rules</mark> because it handles <mark class="find">tension</mark> well. Now you can hang a road from cables, and the towers only have to carry the weight straight down.</p></div><h2>Cables and towers</h2><div class="para"><button class="t" type="button" aria-label="Play from 3:52">3:52</button><p>Which brings us to the question people ask most: why do long bridges sway? The short answer is that they are meant to.</p></div>
+<div class="pop" role="toolbar" aria-label="Selection" data-css="left: 76px; top: 168px"><button class="btn sm ghost" type="button"><svg class="icon" aria-hidden="true"><use href="#i-pen"/></svg>Highlight</button><button class="btn sm ghost" type="button"><svg class="icon" aria-hidden="true"><use href="#i-note"/></svg>Add note</button><button class="btn sm ghost" type="button"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>Copy</button></div>
+<div class="note-card" hidden data-css="left: 76px; top: 168px"><label class="label" for="note">Note</label><textarea id="note">Compression on top, tension underneath. Ask why steel beams are I-shaped.</textarea><div class="row"><button class="btn sm primary" type="button">Save note</button><button class="btn sm ghost" type="button">Cancel</button><button class="btn sm ghost danger" type="button"><svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Remove highlight</button></div></div>
+</article></section></div>
+<div class="mini" role="region" aria-label="Video"><div class="player"><span class="thumb" data-css="--h: 205"></span><span class="play"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg></span><span class="cap num">4:31</span></div><div class="mini-bar"><span>How bridges hold up</span><button class="icon-btn" type="button" aria-label="Pause"><svg class="icon" aria-hidden="true"><use href="#i-pause"/></svg></button><button class="icon-btn" type="button" aria-label="Close player"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button></div></div>
+<button class="btn now-pill" type="button"><svg class="icon" aria-hidden="true"><use href="#i-down"/></svg>Back to now</button>
+</section>
+<section class="page-enter screen" data-screen="error">
+<div class="hero"><h1>Read any video.</h1><p class="lede">Paste a YouTube link and get its transcript in paragraphs, ready to read, search, highlight or hand to Claude for a summary.</p>
+<div class="notice unfold" data-tone="bad" role="alert"><svg class="icon" aria-hidden="true"><use href="#i-warn"/></svg><div><strong>This video has no transcript</strong><p>Its owner turned captions off, so there is nothing to fetch. Try another video, or check back if captions are added later.</p></div></div>
+<form class="stack grab-form" novalidate>
+  <div class="field"><label for="url">Video or playlist link</label>
+  <div class="grab"><input class="input" id="url" name="url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="youtube.com/watch?v=…" value="youtube.com/watch?v=noCaptions7">
+  <button class="btn primary lg go" type="submit"><span class="states"><span class="on">Get transcript</span><span class=""><span class="spinner" aria-hidden="true"></span>Getting it</span></span></button></div></div>
+  <div class="grab-opts">
+    <label class="select"><span class="sr">Language</span><select class="input"><option>Original language</option><option>English (auto)</option><option>Translate to English</option></select><svg class="icon" aria-hidden="true"><use href="#i-chev"/></svg></label>
+    <label class="switch"><span>Timestamps</span><input type="checkbox" role="switch" checked></label>
+    <label class="switch"><span>Paragraphs</span><input type="checkbox" role="switch" checked></label>
+  </div>
+</form></div>
+<div class="hero"><form class="stack grab-form" novalidate>
+  <div class="field"><label for="url">Video or playlist link</label>
+  <div class="grab"><input class="input" id="url" name="url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="youtube.com/watch?v=…" value="youtube.com/feed/subscriptions" aria-invalid="true" aria-describedby="url-err">
+  <button class="btn primary lg go" type="submit"><span class="states"><span class="on">Get transcript</span><span class=""><span class="spinner" aria-hidden="true"></span>Getting it</span></span></button></div><p class="field-error" id="url-err"><svg class="icon" aria-hidden="true"><use href="#i-warn"/></svg>That isn’t a YouTube link. Paste the address from the video’s page or its Share button.</p></div>
+  <div class="grab-opts">
+    <label class="select"><span class="sr">Language</span><select class="input"><option>Original language</option><option>English (auto)</option><option>Translate to English</option></select><svg class="icon" aria-hidden="true"><use href="#i-chev"/></svg></label>
+    <label class="switch"><span>Timestamps</span><input type="checkbox" role="switch" checked></label>
+    <label class="switch"><span>Paragraphs</span><input type="checkbox" role="switch" checked></label>
+  </div>
+</form></div>
+</section>
+<section class="page-enter screen" data-screen="partial">
+<div class="result"><aside class="side"><div class="player"><span class="thumb" data-css="--h: 205"></span><span class="play"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg></span><span class="cap num">4:31</span></div>
+<div class="stack"><p class="video-title">How bridges hold up: forces for beginners</p><p class="meta"><span>Field Notes Engineering</span><span class="num">4:31</span><span>English, auto-generated</span></p></div>
+<div class="notice" data-tone="warn"><svg class="icon" aria-hidden="true"><use href="#i-warn"/></svg><div><strong>Chapters didn’t load</strong><p>The transcript is complete. <button class="btn sm ghost" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>Retry chapters</button></p></div></div></aside>
+<section class="stack" aria-label="Transcript"><div class="reader-head"><div class="row">
+  <button class="btn primary copy" type="button"><span class="states"><span class="on"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>Copy for summary</span><span><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Copied</span></span></button>
+  <label class="select"><span class="sr">Download format</span><select class="input"><option>Text (.txt)</option><option>Markdown (.md)</option><option>Subtitles (.srt)</option><option>WebVTT (.vtt)</option><option>JSON</option><option>CSV</option></select><svg class="icon" aria-hidden="true"><use href="#i-chev"/></svg></label>
+  <button class="btn dl" type="button"><svg class="icon" aria-hidden="true"><use href="#i-down"/></svg>Download</button>
+</div><button class="btn ghost sm find-open" type="button"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>Find<span class="kbd">⌘F</span></button></div><article class="reader"><h2>Beams</h2><div class="para"><button class="t" type="button" aria-label="Play from 0:00">0:00</button><p>Bridges look still, but every one of them is moving. Traffic, wind and heat push on it all day, and the whole trick is giving those forces somewhere to go.</p></div><div class="para"><button class="t" type="button" aria-label="Play from 0:42">0:42</button><p>Start with the simplest kind, a beam. Put a plank across a stream and stand in the middle: the top of the plank squeezes together and the bottom stretches apart.</p></div><div class="para"><button class="t" type="button" aria-label="Play from 1:31">1:31</button><p>That squeeze is compression and the stretch is tension. Stone is good at the first and poor at the second, which is why old bridges are arches and not flat slabs.</p></div><h2>Arches</h2><div class="para"><button class="t" type="button" aria-label="Play from 2:18">2:18</button><p>An arch turns the weight sideways. Each stone leans on the next, so the load runs around the curve and down into the banks, and the banks have to push back just as hard.</p></div><div class="para"><button class="t" type="button" aria-label="Play from 3:05">3:05</button><p>Steel changed the rules because it handles tension well. Now you can hang a road from cables, and the towers only have to carry the weight straight down.</p></div><h2>Cables and towers</h2><div class="para"><button class="t" type="button" aria-label="Play from 3:52">3:52</button><p>Which brings us to the question people ask most: why do long bridges sway? The short answer is that they are meant to.</p></div></article></section></div>
+</section>
+<section class="page-enter screen" data-screen="bulk">
+<div class="hero"><h1>A whole playlist.</h1><p class="lede">Every video’s transcript, two at a time. Leave the tab open; you can pause and pick up where you left off.</p></div>
+<div class="notice" data-tone="warn" role="status"><svg class="icon" aria-hidden="true"><use href="#i-warn"/></svg><div><strong>YouTube asked us to slow down</strong><p>Resuming in <span class="countdown" data-from="41">41</span> s. Nothing to do; finished transcripts are kept.</p></div></div>
+<section class="stack" aria-labelledby="pl-h"><div class="card-head"><h2 id="pl-h">Bridges, start to finish</h2><div class="row"><button class="btn sm" type="button"><svg class="icon" aria-hidden="true"><use href="#i-pause"/></svg>Pause</button><button class="btn sm primary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-down"/></svg>Download all (.zip)</button></div></div>
+<div class="meter-row"><div class="row"><span><span class="num">2</span> of <span class="num">7</span> done · <span class="num">1</span> failed</span><span class="num muted">29%</span></div><div class="meter" role="progressbar" aria-label="Playlist progress" aria-valuenow="29" aria-valuemin="0" aria-valuemax="100"><i data-css="--v: 29"></i></div></div>
+<ol class="queue"><li data-state="done"><span class="num">1</span><span class="title">Lecture 1: what a force is</span><span class="pill" data-tone="good"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Done</span><button class="btn sm ghost" type="button"><svg class="icon" aria-hidden="true"><use href="#i-down"/></svg>Download</button></li><li data-state="done"><span class="num">2</span><span class="title">Lecture 2: beams and bending</span><span class="pill" data-tone="good"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Done</span><button class="btn sm ghost" type="button"><svg class="icon" aria-hidden="true"><use href="#i-down"/></svg>Download</button></li><li data-state="running"><span class="num">3</span><span class="title">Lecture 3: arches and thrust</span><span class="pill" data-tone="accent"><span class="spinner" aria-hidden="true"></span>Getting</span><span></span></li><li data-state="running"><span class="num">4</span><span class="title">Lecture 4: trusses</span><span class="pill" data-tone="accent"><span class="spinner" aria-hidden="true"></span>Getting</span><span></span></li><li data-state="failed"><span class="num">5</span><span class="title">Lecture 5: a site visit (no captions)</span><span class="pill" data-tone="bad"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>No captions</span><button class="btn sm ghost" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>Retry</button></li><li data-state="queued"><span class="num">6</span><span class="title">Lecture 6: cables and towers</span><span class="pill">Waiting</span><span></span></li><li data-state="queued"><span class="num">7</span><span class="title">Lecture 7: why bridges sway</span><span class="pill">Waiting</span><span></span></li></ol></section>
+</section>
+</main>
+
+<footer class="foot">
+  <ul class="promises">
+    <li><svg class="icon" aria-hidden="true"><use href="#i-eye-off"/></svg>No account, no cookies, no trackers</li>
+    <li><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>Highlights and notes stay in this browser</li>
+    <li><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>Videos play from youtube-nocookie.com</li>
+  </ul>
+  <p class="credits">Based on <a href="https://github.com/devkilyungi/yt-transcript-grabber" target="_blank" rel="noreferrer">Transcript Grabber</a> by Victor Kilyungi, AGPL-3.0. Atkinson Hyperlegible Next and Mono by the Braille Institute, Courier Prime by Alan Dague-Greene, under the SIL Open Font License 1.1. Not affiliated with YouTube, a trademark of Google LLC.</p>
+  <span class="maker">
+    <svg class="mk mk-marker" width="24" height="16" viewBox="0 0 24 16" stroke-width="1.5" aria-hidden="true"><rect x="1" y="1.5" width="22" height="6.5" rx="3.25"/><path d="M4.5 4.75h15M4.5 13h10"/></svg>
+    <svg class="mk mk-ditto" width="24" height="16" viewBox="0 0 24 16" stroke-width="1.5" aria-hidden="true"><circle cx="5" cy="5" r="4"/><path d="M9 5h14M2 13h15"/></svg>
+    <svg class="mk mk-steno" width="24" height="16" viewBox="0 0 24 16" stroke-width="1.5" aria-hidden="true"><path d="M12 1v14M1.5 7c1.6-3.5 5-3.5 6.5 0M16 9c1.6 3.5 5 3.5 6.5 0"/></svg>
+    <span>© 2026 <a href="https://github.com/devkilyungi" target="_blank" rel="noreferrer">devkilyungi</a></span>
+  </span>
+</footer>
+
+<div class="toasts" id="toasts" role="region" aria-label="Notifications"></div>
+<div class="tip" id="tip" role="tooltip"></div>
+<div class="sr" id="live" aria-live="polite"></div>
+</body>
+</html>

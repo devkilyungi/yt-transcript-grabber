@@ -1,0 +1,178 @@
+/* House style tokens for Transcript Grabber. The scale below is copied from the kit unchanged; only the material blocks are this project's own.
+   The concept carries three candidate materials so they can be compared; the build keeps the approved one and deletes the other two. */
+
+/* ---- fonts: self-hosted woff2. Body and numbers are the Atkinson pair; each material brings its own display face. ---- */
+@font-face { font-family: 'Atkinson Hyperlegible Next'; src: url('../fonts/atkinson-next-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Atkinson Hyperlegible Next'; src: url('../fonts/atkinson-next-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Atkinson Hyperlegible Mono'; src: url('../fonts/atkinson-mono-500.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Courier Prime'; src: url('../fonts/courier-prime-700.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Special Elite'; src: url('../fonts/special-elite-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Bricolage Grotesque'; src: url('../fonts/bricolage-800.woff2') format('woff2'); font-weight: 800; font-display: swap; }
+
+/* ---- the scale: identical in every project ---- */
+:root {
+  color-scheme: light dark;
+
+  --body: 'Atkinson Hyperlegible Next', system-ui, sans-serif;
+  --mono: 'Atkinson Hyperlegible Mono', ui-monospace, monospace;
+
+  /* Type: 12 is the floor for anything a person must read. */
+  --text-2xs: 12px;
+  --text-xs: 13px;
+  --text-sm: 14px;
+  --text-md: 15px;
+  --text-base: 16px;
+  --text-lg: 17.5px;
+  --text-xl: 21px;
+  --text-2xl: 26px;
+  --text-display: clamp(28px, 6vw, 44px);
+  --leading-tight: 1.1;
+  --leading-snug: 1.3;
+  --leading-ui: 1.5;
+  --tracking-caps: 0.08em;
+  --tracking-stamp: 0.06em;
+
+  /* Space: a 4px grid. 2px is for hairline gaps (segment items); 6, 10 and 14 are allowed inside a control, never between blocks. */
+  --space-0: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Corners and controls. 44 is the smallest thing a thumb is asked to hit. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-card: var(--radius-lg);
+  --radius-pill: 999px;
+  --control-h-sm: 36px;
+  --control-h: 44px;
+  --control-h-lg: 48px;
+
+  /* Layout */
+  --gutter: 20px;
+  --content: 1080px;
+  --content-narrow: 720px;
+  --bar-h: 64px;
+  --card-pad: 16px;
+  --card-gap: 12px;
+  --gap: 16px;
+
+  /* Elevation: cards are flat with a line; only things that float over the page cast a shadow. */
+  --shadow-1: 0 1px 2px light-dark(rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.5));
+  --shadow-2: 0 12px 30px -12px rgb(0 0 0 / 0.45);
+  --shadow-3: 0 24px 60px -20px rgb(0 0 0 / 0.55);
+  --scrim: rgb(0 0 0 / 0.55);
+
+  /* Stacking: named, so a new layer is a decision rather than a bigger number. Dialogs use the top layer and need none. */
+  --z-raised: 1;
+  --z-bar: 30;
+  --z-tip: 40;
+  --z-toast: 50;
+  --z-splash: 100;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 150ms;
+  --dur-base: 240ms;
+  --dur-slow: 420ms;
+
+  /* Status: the same three everywhere. Always shown with an icon and a word, never colour alone. */
+  --good: light-dark(#247247, #5cc28a);
+  --warn: light-dark(#9a4f00, #f0a15c);
+  --bad: light-dark(#b43b33, #ef7a70);
+  --good-soft: color-mix(in srgb, var(--good) 12%, transparent);
+  --warn-soft: color-mix(in srgb, var(--warn) 12%, transparent);
+  --bad-soft: color-mix(in srgb, var(--bad) 12%, transparent);
+}
+:root[data-theme='light'] { color-scheme: light; }
+:root[data-theme='dark'] { color-scheme: dark; }
+@media (max-width: 480px) { :root { --gutter: 16px; } }
+
+/* ---- materials. Each names a real surface and one accent. --mark is new: the wash behind text the person highlights, solid so the contrast test can check ink on it. ---- */
+
+/* Marker: a typed transcript on ruled bond, gone over with a pink highlighter. The highlighter is the accent; the rules are the texture. */
+:root, :root[data-material='marker'] {
+  --bg: light-dark(#f3f1f2, #111012);
+  --texture: light-dark(#e5e0e3, #1e1b1e);
+  --surface: light-dark(#fcfbfb, #1b191b);
+  --raised: light-dark(#ffffff, #232023);
+  --well: light-dark(#ebe7e9, #252124);
+  --line: light-dark(#dbd5d8, #2d292c);
+  --ink: light-dark(#1d1a1c, #ede8eb);
+  --on-ink: light-dark(#f8f6f7, #121011);
+  --muted: light-dark(#615b5f, #a39a9f);
+  --faint: light-dark(#655f63, #978e93);
+  --accent: light-dark(#b0177a, #ff5cb8);
+  --on-accent: light-dark(#ffffff, #22051a);
+  --accent-soft: light-dark(rgb(176 23 122 / 0.1), rgb(255 92 184 / 0.14));
+  --accent-text: light-dark(#9c136b, #ff9cd2);
+  --mark: light-dark(#fbc9e6, #57223f);
+  --paper: repeating-linear-gradient(180deg, transparent 0 27px, var(--texture) 27px 28px);
+  --display: 'Courier Prime', 'Courier New', ui-monospace, monospace;
+  --display-weight: 700;
+  --display-case: none;
+  --display-tracking: -0.01em;
+  --radius-card: var(--radius-md);
+}
+
+/* Ditto: a spirit-duplicator copy, violet ink on soft paper. The ink is the accent; the paper's fibre is the texture. */
+:root[data-material='ditto'] {
+  --bg: light-dark(#f1f0f4, #100f14);
+  --texture: light-dark(#e2dfe9, #1c1a22);
+  --surface: light-dark(#fbfafd, #1a1920);
+  --raised: light-dark(#ffffff, #222029);
+  --well: light-dark(#e9e7ee, #24222b);
+  --line: light-dark(#d8d4e0, #2d2a35);
+  --ink: light-dark(#1b1a22, #ebe8f1);
+  --on-ink: light-dark(#f8f7fb, #100f14);
+  --muted: light-dark(#5e5a69, #a29dad);
+  --faint: light-dark(#5e5a69, #9a95a5);
+  --accent: light-dark(#742fb0, #c58cf2);
+  --on-accent: light-dark(#ffffff, #1b0b2b);
+  --accent-soft: light-dark(rgb(116 47 176 / 0.1), rgb(197 140 242 / 0.14));
+  --accent-text: light-dark(#6a2aa3, #d3a8f7);
+  --mark: light-dark(#e3d3f6, #3e2a57);
+  --paper:
+    radial-gradient(circle at 2px 3px, var(--texture) 0.9px, transparent 1.3px) 0 0 / 7px 11px,
+    radial-gradient(circle at 5px 2px, var(--texture) 0.9px, transparent 1.3px) 0 0 / 13px 17px;
+  --display: 'Special Elite', 'Courier New', ui-monospace, monospace;
+  --display-weight: 400;
+  --display-case: none;
+  --display-tracking: 0;
+  --radius-card: var(--radius-lg);
+}
+
+/* Steno: a Gregg-ruled shorthand pad, eye-ease green paper with a centre rule. The ruling ink is the accent. */
+:root[data-material='steno'] {
+  --bg: light-dark(#eef2e9, #0f120e);
+  --texture: light-dark(#dde5d6, #1b2119);
+  --surface: light-dark(#f9fbf6, #181c16);
+  --raised: light-dark(#ffffff, #20251e);
+  --well: light-dark(#e5eadf, #222820);
+  --line: light-dark(#d2dacb, #2b3228);
+  --ink: light-dark(#18201a, #e7ece3);
+  --on-ink: light-dark(#f6f9f3, #0f120e);
+  --muted: light-dark(#56614f, #9aa493);
+  --faint: light-dark(#56614f, #929c8b);
+  --accent: light-dark(#4f7a14, #a2d65e);
+  --on-accent: light-dark(#ffffff, #142007);
+  --accent-soft: light-dark(rgb(79 122 20 / 0.1), rgb(162 214 94 / 0.14));
+  --accent-text: light-dark(#456b11, #b5e07a);
+  --mark: light-dark(#dcebb8, #29361a);
+  --paper:
+    linear-gradient(90deg, transparent calc(50% - 0.5px), var(--texture) 0 calc(50% + 0.5px), transparent 0),
+    repeating-linear-gradient(180deg, transparent 0 23px, var(--texture) 23px 24px);
+  --display: 'Bricolage Grotesque', 'Arial Narrow', sans-serif;
+  --display-weight: 800;
+  --display-case: none;
+  --display-tracking: -0.015em;
+  --radius-card: var(--radius-lg);
+}

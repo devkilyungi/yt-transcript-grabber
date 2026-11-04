@@ -1,0 +1,6 @@
+{
+  "name": "transcript-grabber-concept",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "node scripts/serve.mjs", "test": "node --test" }
+}

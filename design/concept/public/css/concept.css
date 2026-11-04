@@ -1,0 +1,61 @@
+/* The concept document only: direction cards and scaled screen frames. Not part of the product. */
+
+.section { display: grid; gap: var(--space-6); scroll-margin-top: calc(var(--bar-h) + var(--bar-top) + 12px); }
+.section > header { display: grid; gap: var(--space-2); max-width: 70ch; }
+
+/* ---- a direction: its own tokens, set on the card, so all three sit side by side on one page ---- */
+.dirs { display: grid; gap: var(--space-6); }
+.dir { display: grid; gap: var(--space-5); color: var(--ink); padding: var(--space-6); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.dir.pick { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.dir-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--space-6); }
+@media (max-width: 820px) { .dir-grid { grid-template-columns: minmax(0, 1fr); } }
+.dir .mk { display: inline; }
+.dir-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3); }
+.dir-head h3 { font: var(--dw) var(--text-2xl) / 1.1 var(--df); letter-spacing: var(--dt); }
+
+/* The specimen: the material's own paper, face and highlight, in its light and dark. */
+.specimen { display: grid; gap: var(--space-3); padding: var(--space-5); border-radius: var(--radius-md); color: var(--ink); background: var(--paper), var(--bg); border: 1px solid var(--line); }
+.specimen .big { font: var(--dw) clamp(26px, 4vw, 36px) / 1.1 var(--df); letter-spacing: var(--dt); }
+.specimen p { font-size: var(--text-lg); line-height: 1.7; max-width: 52ch; }
+.specimen .hl { background: var(--mark); color: var(--ink); padding: 0 2px; border-radius: 2px; }
+.specimen .t { color: var(--accent-text); font: 500 var(--text-xs) var(--mono); }
+.specimen .btn.primary { justify-self: start; }
+
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: var(--space-2); list-style: none; padding: 0; }
+.swatches li { display: grid; gap: 4px; font: 500 var(--text-2xs) var(--mono); color: var(--muted); }
+.swatches i { display: block; height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--c); }
+.swatches b { font-weight: 600; color: var(--ink); }
+
+.marks { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-5); }
+.marks figure { display: grid; justify-items: center; gap: 6px; }
+.marks figcaption { font: 500 var(--text-2xs) var(--mono); color: var(--muted); }
+.marks .s16 { width: 16px; height: 16px; } .marks .s32 { width: 32px; height: 32px; } .marks .s88 { width: 88px; height: 88px; }
+.marks .maker-demo { color: var(--accent); fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+.reasons { display: grid; gap: var(--space-2); padding-left: 1.1em; color: var(--muted); font-size: var(--text-sm); }
+.reasons strong { color: var(--ink); }
+
+/* ---- screen frames: real pages at real widths, scaled down ---- */
+.frames { display: grid; gap: var(--space-8); }
+.frame-row { display: grid; gap: var(--space-3); }
+.frame-row > .row { justify-content: space-between; }
+.frame-set { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; }
+.frame { --s: 0.5; position: relative; flex: none; width: calc(var(--w) * var(--s) * 1px); height: calc(var(--h) * var(--s) * 1px); overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--well); }
+.frame iframe { width: calc(var(--w) * 1px); height: calc(var(--h) * 1px); border: 0; scale: var(--s); transform-origin: 0 0; }
+.frame.phone { --w: 390; --h: 844; --s: 0.5; }
+.frame.desk { --w: 1280; --h: 800; --s: 0.38; }
+.frame.big { --w: 1280; --h: 800; --s: 0.78; }
+.frame + figcaption, .frame-cap { font: 500 var(--text-2xs) var(--mono); color: var(--muted); }
+.frame-set figure { display: grid; gap: 6px; }
+@media (max-width: 1000px) { .frame.big { --s: 0.6; } }
+@media (max-width: 820px) { .frame.big { --s: 0.42; } }
+@media (max-width: 560px) { .frame.phone { --s: 0.42; } .frame.desk, .frame.big { --s: 0.26; } }
+
+.motion-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-3); list-style: none; padding: 0; }
+.motion-list .card p { color: var(--muted); font-size: var(--text-sm); }
+
+.gaps { display: grid; gap: var(--space-2); }
+.gaps .panel summary span { display: grid; gap: 2px; }
+.gaps .panel summary small { color: var(--muted); font-weight: 400; font-size: var(--text-xs); }
+.fold-body p + p, .fold-body ul { margin-top: var(--space-2); }
+.fold-body ul { padding-left: 1.1em; }
+.fold-body code, .reasons code { font: 500 0.92em var(--mono); }

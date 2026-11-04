@@ -1,0 +1,143 @@
+/* Transcript Grabber: what this product needs beyond house.css. Tokens only; no new colours except --mark (in tokens.css). */
+
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.stack { display: grid; gap: var(--space-3); align-content: start; }
+
+/* ---- the mark: one per material, shown by data-material. Tile in ink, lines in the paper's colour, the accent over the top. ---- */
+.mk { display: none; }
+:root:not([data-material]) .mk-marker, :root[data-material='marker'] .mk-marker,
+:root[data-material='ditto'] .mk-ditto, :root[data-material='steno'] .mk-steno { display: inline; }
+.mk .tile { fill: var(--ink); }
+.mk .ln { fill: none; stroke: var(--bg); stroke-width: 2; stroke-linecap: round; }
+.mk .hi { fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round; }
+.mk .hi-thin { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+/* The splash draws the mark: lines type on, then the accent goes over them. The kit's bar-rise is for rect bars, so it is switched off. */
+.splash-mark rect { animation: none; }
+.splash-mark :is(.ln, .hi, .hi-thin) { stroke-dasharray: 1; animation: draw-in 300ms var(--ease-out) backwards; }
+.splash-mark .d1 { animation-delay: 90ms; }
+.splash-mark .d2 { animation-delay: 180ms; }
+.splash-mark :is(.hi, .hi-thin) { animation-duration: 340ms; animation-delay: 360ms; }
+.splash-word { text-transform: none; letter-spacing: var(--display-tracking); }
+
+/* ---- splash exits ---- */
+/* Swipe (marker): the cover is wiped away left to right on a slant, with a highlighter streak on its leading edge. */
+.splash[data-exit='swipe'] .door.b { background: var(--accent); clip-path: polygon(-6% 0, 0 0, -12% 100%, -18% 100%); }
+:root[data-intro='reveal'] .splash[data-exit='swipe'] .door.a { animation: swipe-cover 560ms var(--ease-in-out) forwards; }
+:root[data-intro='reveal'] .splash[data-exit='swipe'] .door.b { animation: swipe-edge 560ms var(--ease-in-out) forwards; }
+@keyframes swipe-cover { from { clip-path: polygon(0 0, 100% 0, 100% 100%, -12% 100%); } to { clip-path: polygon(112% 0, 112% 0, 112% 100%, 100% 100%); } }
+@keyframes swipe-edge { from { clip-path: polygon(-6% 0, 0 0, -12% 100%, -18% 100%); } to { clip-path: polygon(106% 0, 112% 0, 100% 100%, 94% 100%); } }
+/* Feed (ditto): the copy runs off the drum, out through the bottom. */
+.splash[data-exit='feed'] .door.b, .splash[data-exit='flip'] .door.b { display: none; }
+:root[data-intro='reveal'] .splash[data-exit='feed'] .door.a { animation: feed 560ms cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+@keyframes feed { to { translate: 0 104%; } }
+/* Flip (steno): the page turns over its top edge, as a pad's page does. */
+.splash[data-exit='flip'] { perspective: 1600px; }
+.splash[data-exit='flip'] .door.a { transform-origin: 50% 0; backface-visibility: hidden; }
+:root[data-intro='reveal'] .splash[data-exit='flip'] .door.a { animation: flip 560ms var(--ease-in-out) forwards; }
+@keyframes flip { to { transform: rotateX(-100deg); } }
+
+/* ---- the grab form ---- */
+.hero { display: grid; gap: var(--space-4); max-width: var(--content-narrow); }
+.grab { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); align-items: start; }
+.grab .input { min-height: var(--control-h-lg); }
+.grab-opts { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); align-items: center; }
+.grab-opts .switch { min-height: 0; gap: var(--space-2); justify-content: flex-start; font-size: var(--text-sm); }
+.grab-opts .select { min-height: var(--control-h-sm); }
+@media (max-width: 560px) { .grab { grid-template-columns: minmax(0, 1fr); } .grab .btn { width: 100%; } }
+
+/* ---- recent videos ---- */
+.recents { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-3); list-style: none; padding: 0; }
+.recent { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: var(--space-3); align-items: center; padding: var(--space-2); }
+.recent strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: var(--text-sm); line-height: var(--leading-snug); }
+.recent small { color: var(--muted); font-size: var(--text-2xs); }
+/* Stand-ins for YouTube thumbnails, which the build loads from i.ytimg.com. */
+.thumb { aspect-ratio: 16 / 9; border-radius: var(--radius-sm); background: linear-gradient(135deg, hsl(var(--h, 320) 30% 34%), hsl(calc(var(--h, 320) + 40) 26% 18%)); }
+
+/* ---- the result: player and chapters on the left, the transcript on the right; stacked on phones ---- */
+.result { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: var(--space-8); align-items: start; }
+.side { position: sticky; top: calc(var(--bar-h) + var(--bar-top) + var(--space-4)); display: grid; gap: var(--space-4); }
+@media (max-width: 1000px) { .result { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); } .side { position: static; } }
+.player { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 9; border-radius: var(--radius-card); overflow: hidden; background: #0d0c0d; color: #fff; }
+.player .thumb { position: absolute; inset: 0; border-radius: 0; opacity: 0.7; }
+.player .play { position: relative; display: grid; place-items: center; width: 56px; height: 40px; border-radius: 12px; background: rgb(255 255 255 / 0.92); color: #111; }
+.player .play svg { width: 20px; height: 20px; fill: currentColor; stroke: none; }
+.player .cap { position: absolute; inset: auto 10px 8px; font: 500 var(--text-2xs) var(--mono); color: rgb(255 255 255 / 0.85); }
+.video-title { font: 600 var(--text-lg) / var(--leading-snug) var(--body); }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--muted); font-size: var(--text-xs); }
+
+/* Docked: once the player scrolls away it rides along small, bottom right; on phones, a strip under the bar. */
+.mini { position: fixed; z-index: var(--z-raised); right: var(--gutter); bottom: var(--gutter); width: 240px; display: grid; grid-template-columns: 1fr; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--raised); box-shadow: var(--shadow-2); overflow: hidden; animation: page-rise var(--dur-base) var(--ease-out); }
+.mini .player { border-radius: 0; }
+.mini-bar { display: flex; align-items: center; gap: var(--space-2); padding: 6px 6px 6px 10px; font-size: var(--text-xs); }
+.mini-bar span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini-bar .icon-btn { width: 32px; height: 32px; border: 0; background: none; }
+@media (max-width: 560px) {
+  .mini { top: calc(var(--bar-h) + var(--bar-top)); bottom: auto; left: 0; right: 0; width: auto; grid-template-columns: 128px minmax(0, 1fr); border-width: 0 0 1px; border-radius: 0; }
+}
+
+/* Chapters: a list of seek buttons; the one playing is marked. */
+.chapters { display: grid; gap: 2px; list-style: none; padding: 0; }
+.chapters button { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: var(--space-2); width: 100%; padding: 8px 10px; border: 0; border-radius: var(--radius-sm); background: none; text-align: left; font-size: var(--text-sm); transition: background var(--dur-fast) var(--ease-in-out); }
+.chapters .num { color: var(--faint); font-size: var(--text-xs); padding-top: 1px; }
+@media (hover: hover) { .chapters button:hover { background: var(--well); } }
+.chapters button[aria-current='true'] { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+.chapters button[aria-current='true'] .num { color: inherit; }
+
+/* ---- the reader: a reading measure, timestamps hung in the margin ---- */
+.reader-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.reader { display: grid; gap: var(--space-4); max-width: 68ch; }
+.reader h2 { font-size: var(--text-lg); margin-top: var(--space-4); }
+.para { position: relative; display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: var(--space-3); }
+.para .t { align-self: start; padding: 4px 0; border: 0; background: none; color: var(--faint); font: 500 var(--text-xs) var(--mono); font-variant-numeric: tabular-nums; text-align: left; transition: color var(--dur-fast); }
+@media (hover: hover) { .para .t:hover { color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; } }
+.para p { font-size: var(--text-lg); line-height: 1.7; }
+/* The paragraph being spoken: a bar in the margin, its time in the accent. It moves with a short slide so the eye can follow it. */
+.para::before { content: ''; position: absolute; left: -14px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: var(--accent); scale: 1 0; transition: scale var(--dur-base) var(--ease-out); }
+.para.now::before { scale: 1 1; }
+.para.now .t { color: var(--accent-text); font-weight: 500; }
+@media (max-width: 560px) { .para { grid-template-columns: minmax(0, 1fr); gap: 0; } .para::before { left: -10px; } .para p { font-size: var(--text-base); } }
+
+/* Highlights the person made: a solid wash (contrast-tested), swiped on left to right only when just made. */
+mark.hl { color: var(--ink); background: linear-gradient(var(--mark), var(--mark)) no-repeat 0 0 / 100% 100%; border-radius: 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 0 2px; }
+mark.hl.fresh { animation: swipe-on var(--dur-slow) var(--ease-out); }
+@keyframes swipe-on { from { background-size: 0 100%; } }
+mark.hl[data-note]::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 3px; border-radius: 50%; background: var(--accent); vertical-align: super; }
+/* Find: every match on the well with an ink underline; the current one is ink, so it never reads as a highlight. */
+mark.find { color: inherit; background: var(--well); box-shadow: inset 0 -2px var(--ink); border-radius: 2px; }
+mark.find.current { background: var(--ink); color: var(--on-ink); box-shadow: none; }
+
+/* ---- find bar ---- */
+.find-bar { display: flex; align-items: center; gap: var(--space-2); padding: 6px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); }
+.find-bar .input { flex: 1; min-width: 0; min-height: var(--control-h-sm); border: 0; background: none; }
+.find-bar .input:focus-visible { box-shadow: none; }
+.find-bar .count { color: var(--muted); font-size: var(--text-xs); white-space: nowrap; }
+.find-bar .icon-btn { width: var(--control-h-sm); height: var(--control-h-sm); }
+.find-bar:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* ---- back to now ---- */
+.now-pill { position: fixed; z-index: var(--z-raised); left: 50%; bottom: calc(var(--gutter) + env(safe-area-inset-bottom)); translate: -50% 0; box-shadow: var(--shadow-2); border-radius: var(--radius-pill); animation: pill-in var(--dur-base) var(--ease-out); }
+@keyframes pill-in { from { opacity: 0; translate: -50% 12px; } }
+
+/* ---- selection popover: what you can do with words you selected ---- */
+.pop { position: absolute; z-index: var(--z-tip); display: flex; gap: 2px; padding: 4px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--raised); box-shadow: var(--shadow-2); animation: page-rise var(--dur-fast) var(--ease-out); }
+.pop .btn { border: 0; }
+.note-card { position: absolute; z-index: var(--z-tip); width: min(320px, calc(100% - 2 * var(--gutter))); display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--raised); box-shadow: var(--shadow-2); }
+.note-card textarea { min-height: 84px; resize: vertical; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); line-height: var(--leading-ui); }
+.note-card textarea:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.anchor { position: relative; }
+
+/* ---- bulk: one row per video, a status pill and the one action that applies ---- */
+.queue { display: grid; list-style: none; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); overflow: hidden; }
+.queue li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto auto; gap: var(--space-3); align-items: center; min-height: 52px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: var(--text-sm); }
+.queue li:first-child { border-top: 0; }
+.queue .num { color: var(--faint); font-size: var(--text-xs); }
+.queue .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue li[data-state='running'] { background: var(--accent-soft); }
+@media (max-width: 560px) { .queue li { grid-template-columns: 24px minmax(0, 1fr) auto; } .queue li > .btn { grid-column: 2 / -1; justify-self: start; } }
+.meter-row { display: grid; gap: 6px; }
+.meter-row .row { justify-content: space-between; font-size: var(--text-sm); }
+
+/* Rate-limit countdown: the seconds roll down in place. */
+.countdown { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.skel-box { background: var(--well); }
