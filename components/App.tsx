@@ -5,11 +5,12 @@
 // URLs:  /?v=<id or full link>   one video (the bookmarklet sends a full link)
 //        /?list=<id>             a playlist
 //        /?videos=<id,id,…>      several pasted links
+//        /?playlist              the empty playlist page
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { Chapter, Transcript } from '@/lib/types';
 import { playlistIdFrom, videoIdFrom, videoIdsIn } from '@/lib/links';
-import { api, ApiError, closeMenus, isTyping, toast, toggleTheme } from '@/lib/browser';
+import { api, ApiError, toast } from '@/lib/browser';
 import { type BulkSource, createBulkQueue } from '@/lib/bulk';
 import { onDeviceAvailable, translateOnDevice } from '@/lib/translate';
 import { usePrefs } from '@/hooks/usePrefs';
@@ -17,15 +18,16 @@ import { LinkForm, TopBar } from './TopBar';
 import { Landing, rememberRecent, type ShownError } from './Landing';
 import { ResultView } from './result/ResultView';
 import { BulkView } from './BulkView';
-import { Toast } from './Toast';
+import { Icon } from './Sprite';
 
 type View = 'landing' | 'result' | 'bulk';
-export type InitialQuery = { v?: string; list?: string; videos?: string };
+export type InitialQuery = { v?: string; list?: string; videos?: string; playlist?: boolean };
 type OpenOptions = { push?: boolean; data?: Transcript | null; fromBulk?: boolean; lang?: { code: string; generated: boolean } | null };
 
 const NOT_A_LINK: ShownError = {
   message: 'That doesn’t look like a YouTube link.',
   detail: 'Paste a youtube.com or youtu.be link, a playlist, or several links at once.',
+  field: true,
 };
 
 /** Decide what a pasted string is: several videos or a playlist, one video, or nothing we know. */
@@ -39,13 +41,13 @@ function classify(raw: string): { bulk: BulkSource } | { video: string } | null 
 }
 
 /** Match the first render to the URL, so the server sends the right view's shell. */
-function initialView({ v, list, videos }: InitialQuery): { view: View; pendingId: string | null } {
+function initialView({ v, list, videos, playlist }: InitialQuery): { view: View; pendingId: string | null } {
   if (v) {
     const what = classify(v);
     if (what && 'video' in what) return { view: 'result', pendingId: what.video };
     if (what) return { view: 'bulk', pendingId: null };
   }
-  if (list || videos) return { view: 'bulk', pendingId: null };
+  if (list || videos || playlist) return { view: 'bulk', pendingId: null };
   return { view: 'landing', pendingId: null };
 }
 
@@ -64,6 +66,7 @@ export function App({ initial }: { initial: InitialQuery }) {
   /** What the reader shows: the source, or a translation of it. */
   const [data, setData] = useState<Transcript | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [chaptersFailed, setChaptersFailed] = useState(false);
   const [fromBulk, setFromBulk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ShownError | null>(null);
@@ -73,6 +76,7 @@ export function App({ initial }: { initial: InitialQuery }) {
   const [captionOverride, setCaptionOverride] = useState<string | null>(null);
   const [prefs, setPref] = usePrefs();
   const [queue] = useState(createBulkQueue);
+  const queued = useSyncExternalStore(queue.subscribe, () => !!queue.key, () => false);
 
   const loadGen = useRef(0);        // bumps whenever a different transcript or batch is requested
   const translateSeq = useRef(0);   // bumps on every Translate pick, so only the latest one lands
@@ -92,8 +96,9 @@ export function App({ initial }: { initial: InitialQuery }) {
     const what = classify(raw);
     if (what && 'bulk' in what) return openBulk(what.bulk, push);
     if (what) return openVideo(what.video, { push });
-    if (latest.current.view === 'landing') setError(NOT_A_LINK);
-    else toast(NOT_A_LINK.message);
+    // Where a hero form is showing, the error belongs under it.
+    if (latest.current.view === 'landing' || (latest.current.view === 'bulk' && !queue.key)) setError(NOT_A_LINK);
+    else toast(NOT_A_LINK.message, { tone: 'bad' });
   }
 
   async function openVideo(id: string, { push = true, data = null, fromBulk = false, lang = null }: OpenOptions = {}) {
@@ -109,7 +114,7 @@ export function App({ initial }: { initial: InitialQuery }) {
       } catch (err) {
         if (gen !== loadGen.current) return;
         setBusy(false);
-        if ((from === 'result' && !skeleton) || from === 'bulk') return toast((err as Error).message);
+        if ((from === 'result' && !skeleton) || from === 'bulk') return toast((err as Error).message, { tone: 'bad' });
         setView('landing');
         setPendingId(null);
         setHeroUrl(id);
@@ -127,7 +132,7 @@ export function App({ initial }: { initial: InitialQuery }) {
     setFromBulk(fromBulk);
     setTranslatingTo(null);
     setCaptionOverride(null);
-    if (!sameVideo) setChapters([]);
+    if (!sameVideo) { setChapters([]); setChaptersFailed(false); }
     setPendingId(null);
     setView('result');
     setUrl(`?v=${data.videoId}`, push);
@@ -142,10 +147,15 @@ export function App({ initial }: { initial: InitialQuery }) {
   }
 
   async function loadChapters(id: string) {
+    const current = () => latest.current.source?.videoId === id;
     try {
-      const { chapters } = await api<{ chapters: Chapter[] }>('/api/chapters', { id });
-      if (latest.current.source?.videoId === id && chapters.length) setChapters(chapters);
-    } catch {} // chapters are a nice-to-have
+      const { chapters, failed } = await api<{ chapters: Chapter[]; failed?: boolean }>('/api/chapters', { id });
+      if (!current()) return;
+      if (chapters.length) setChapters(chapters);
+      setChaptersFailed(!!failed);
+    } catch {
+      if (current()) setChaptersFailed(true); // the transcript is fine without them; the reader offers a retry
+    }
   }
 
   async function openBulk(source: BulkSource, push = true) {
@@ -160,7 +170,7 @@ export function App({ initial }: { initial: InitialQuery }) {
       await queue.start(source);
     } catch (err) {
       if (gen !== loadGen.current) return;
-      if (from === 'result') { history.back(); return toast((err as Error).message); }
+      if (from === 'result') { history.back(); return toast((err as Error).message, { tone: 'bad' }); }
       setView('landing');
       setUrl('', false);
       setError(err as ApiError);
@@ -187,6 +197,7 @@ export function App({ initial }: { initial: InitialQuery }) {
     }
     ++loadGen.current; // drop anything still loading
     setBusy(false);
+    if (q.has('playlist')) return setView('bulk'); // a queue already running stays, and shows
     queue.cancel();
     setView('landing');
   }
@@ -195,6 +206,13 @@ export function App({ initial }: { initial: InitialQuery }) {
     if (latest.current.view === 'landing') return;
     setError(null);
     setUrl('', true);
+    route();
+  };
+
+  const playlists = () => {
+    if (latest.current.view === 'bulk') return;
+    setError(null);
+    setUrl('?playlist', true);
     route();
   };
 
@@ -243,7 +261,7 @@ export function App({ initial }: { initial: InitialQuery }) {
       if (current()) setData(out);
     } catch (err) {
       if ((err as Error).name === 'AbortError' || !current()) return;
-      toast((err as Error).message);
+      toast((err as Error).message, { tone: 'bad' });
       setData(src);
     } finally {
       if (current()) {
@@ -266,37 +284,15 @@ export function App({ initial }: { initial: InitialQuery }) {
     return () => removeEventListener('popstate', onPop);
   }, []);
 
+  const firstView = useRef(true);
   useEffect(() => {
     scrollTo({ top: 0 });
-    closeMenus();
     if (view === 'landing') document.title = 'Transcript Grabber';
+    else if (view === 'bulk') document.title = 'Playlist · Transcript Grabber';
+    // The page changed under a screen reader: start it at the new page. The first load keeps the link box's autofocus.
+    if (!firstView.current) document.getElementById('main')?.focus({ preventScroll: true });
+    firstView.current = false;
   }, [view]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') return closeMenus();
-
-      if ((e.metaKey || e.ctrlKey) && e.key === 'f' && latest.current.view === 'result') {
-        const find = document.getElementById('find') as HTMLInputElement | null;
-        if (!find) return;
-        e.preventDefault();
-        find.focus();
-        find.select();
-        return;
-      }
-
-      if (e.key.toLowerCase() === 'd' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.repeat) {
-        // Typing a "d" in a field shouldn't flip the theme, but an empty link box is fair game.
-        const el = document.activeElement as HTMLInputElement | null;
-        const emptyLinkBox = !!el?.matches('[data-link-box]') && !el.value;
-        if (isTyping(el) && !emptyLinkBox) return;
-        e.preventDefault();
-        toggleTheme();
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
 
   /* ---------- Render ---------- */
 
@@ -304,56 +300,74 @@ export function App({ initial }: { initial: InitialQuery }) {
 
   return (
     <>
-      <TopBar onHome={home}>
-        {view !== 'landing' && <LinkForm mini value={miniUrl} onChange={setMiniUrl} onGo={raw => go(raw)} busy={busy} />}
-      </TopBar>
+      <a className="skip" href="#main">Skip to content</a>
+      <TopBar view={view} onHome={home} onPlaylist={playlists}
+        // A page with its own link box doesn't need a second one in the bar.
+        mini={(view === 'result' || (view === 'bulk' && queued)) && <LinkForm mini value={miniUrl} onChange={setMiniUrl} onGo={raw => go(raw)} busy={busy} />} />
 
-      {view === 'landing' && (
-        <Landing
-          form={<LinkForm value={heroUrl} onChange={setHeroUrl} onGo={raw => go(raw)} busy={busy} />}
-          error={error}
-          onOpen={id => openVideo(id)}
-        />
-      )}
+      <main className="main" id="main" tabIndex={-1}>
+        {view === 'landing' && (
+          <Landing
+            form={<LinkForm value={heroUrl} onChange={setHeroUrl} onGo={raw => go(raw)} busy={busy} error={error} />}
+            error={error}
+            prefs={prefs}
+            setPref={setPref}
+            onOpen={id => openVideo(id)}
+          />
+        )}
 
-      {view === 'result' && videoId && (
-        <ResultView
-          key={videoId}
-          videoId={videoId}
-          data={data}
-          source={source}
-          chapters={chapters}
-          prefs={prefs}
-          setPref={setPref}
-          busy={busy || translatingTo != null}
-          status={captionOverride}
-          translatingTo={translatingTo}
-          fromBulk={fromBulk}
-          onBack={() => history.back()}
-          onLanguage={changeLanguage}
-          onTranslate={translate}
-        />
-      )}
+        {view === 'result' && videoId && (
+          <ResultView
+            key={videoId}
+            videoId={videoId}
+            data={data}
+            source={source}
+            chapters={chapters}
+            chaptersFailed={chaptersFailed}
+            onRetryChapters={() => { setChaptersFailed(false); loadChapters(videoId); }}
+            prefs={prefs}
+            setPref={setPref}
+            busy={busy || translatingTo != null}
+            status={captionOverride}
+            translatingTo={translatingTo}
+            fromBulk={fromBulk}
+            onBack={() => history.back()}
+            onLanguage={changeLanguage}
+            onTranslate={translate}
+          />
+        )}
 
-      {view === 'bulk' && <BulkView queue={queue} prefs={prefs} onOpen={(id, item) => openVideo(id, { data: item, fromBulk: true })} />}
+        {view === 'bulk' && (
+          <BulkView queue={queue} prefs={prefs} onOpen={(id, item) => openVideo(id, { data: item, fromBulk: true })}
+            form={<LinkForm label="Playlist or video links" value={miniUrl} onChange={setMiniUrl} onGo={raw => go(raw)} busy={busy} error={error} />} />
+        )}
+      </main>
 
       <Footer />
-      <Toast />
     </>
   );
 }
 
 const REPO = 'https://github.com/devkilyungi/yt-transcript-grabber';
 
-/** Credit and source link. The AGPL attribution term in NOTICE requires forks to keep this. */
+/** Promises and credit. The AGPL attribution term in NOTICE requires forks to keep the credit. */
 function Footer() {
   return (
-    <footer className="site-footer">
-      Transcript Grabber by Victor Kilyungi
-      <span aria-hidden="true">·</span>
-      <a href={REPO} target="_blank" rel="noopener">Source on GitHub</a>
-      <span aria-hidden="true">·</span>
-      <a href={`${REPO}/blob/main/LICENSE`} target="_blank" rel="noopener">AGPL-3.0</a>
+    <footer className="foot">
+      <ul className="promises">
+        <li><Icon name="eye-off" />No account, no cookies, no trackers</li>
+        <li><Icon name="shield" />Highlights and notes stay on this Mac</li>
+        <li><Icon name="info" />Videos play from youtube-nocookie.com</li>
+      </ul>
+      <p className="credits">
+        <a href={REPO} target="_blank" rel="noreferrer">Transcript Grabber</a> by Victor Kilyungi, <a href={`${REPO}/blob/main/LICENSE`} target="_blank" rel="noreferrer">AGPL-3.0</a>.
+        {' '}Atkinson Hyperlegible Next and Mono by the Braille Institute, Courier Prime by Alan Dague-Greene, under the SIL Open Font License 1.1.
+        {' '}Not affiliated with YouTube, a trademark of Google LLC.
+      </p>
+      <span className="maker">
+        <svg className="mk" width="24" height="16" viewBox="0 0 24 16" strokeWidth="1.5" aria-hidden="true"><rect x="1" y="1.5" width="22" height="6.5" rx="3.25" /><path d="M4.5 4.75h15M4.5 13h10" /></svg>
+        © 2026 <a href="https://github.com/devkilyungi" target="_blank" rel="noreferrer">devkilyungi</a>
+      </span>
     </footer>
   );
 }

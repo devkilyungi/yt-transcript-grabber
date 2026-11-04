@@ -1,29 +1,23 @@
 # Transcript Grabber
 
-Transcript Grabber is a local Next.js app. Paste a YouTube link and get a clean, paragraphed transcript, mainly so you can paste it into Claude for a summary. It runs on your own machine: no accounts, no API keys, and nothing is stored on a server.
+Transcript Grabber is a desktop app for macOS, built with Next.js inside an Electron shell. Paste a YouTube link and get a clean, paragraphed transcript, mainly so you can paste it into Claude for a summary. It runs on your own machine: no accounts, no API keys, and nothing is stored on a server.
 
 ## Getting started
 
-Requires Node 20.9 or newer.
+Requires Node 22.18 or newer. To install the app:
 
 ```
 npm install
-npm run dev
-```
-
-Then open http://localhost:8765.
-
-For a production build, run `npm run build` and then `npm start` (same port). `npm run typecheck` runs the TypeScript compiler without emitting anything.
-
-## Desktop app (macOS)
-
-The same app also comes as a Mac app, so you can open it from the Dock without keeping a dev server running. It's an Electron shell that starts the production server in the background and shows it in its own window.
-
-```
 npm run app:install
 ```
 
-This builds the app and copies `Transcript Grabber.app` into `/Applications`. Open it from there, then right-click its Dock icon and choose Options → Keep in Dock. Run the command again after pulling or changing code, because the app bundles a snapshot of the build.
+To work on it in a browser, run `npm run dev` and open http://localhost:8765. For a production build, run `npm run build` and then `npm start` (same port).
+
+## Desktop app (macOS)
+
+The Electron shell starts the production server in the background and shows it in its own window, so you can open it from the Dock without keeping a dev server running.
+
+`npm run app:install` builds the app and copies `Transcript Grabber.app` into `/Applications`. Open it from there, then right-click its Dock icon and choose Options → Keep in Dock. Run the command again after pulling or changing code, because the app bundles a snapshot of the build.
 
 - `npm run app` builds the server and opens it in Electron without packaging, which is the quickest way to try a change.
 - `npm run app:package` builds `dist/mac-arm64/Transcript Grabber.app` without installing it.
@@ -49,11 +43,24 @@ The app is built on your machine and isn't code-signed, which is fine for runnin
 - Recent videos.
 - Light and dark theme, toggled with the D key.
 
+## Design
+
+The interface is built on the house design system, copied into `public/css/tokens.css`, `public/css/house.css`, `public/js/gate.js` and `lib/house/` rather than rewritten. Project styles go in `public/css/app.css`. The material is Marker on dotted paper, in a brown and beige palette whose values all sit in one block in `tokens.css`. Decisions and departures from the kit are in [CHANGELOG.md](CHANGELOG.md).
+
+## Testing
+
+- `npm test` checks every colour pair in the palette against WCAG AA, and link parsing.
+- `npm run build:server && npm run test:e2e` drives the built server in a real browser, on a throwaway profile: splash, theme, errors, headers and CSP, 320px width, a real video, find, highlights and playback. It needs network access to YouTube. `E2E_SHOTS=<dir>` saves screenshots.
+- `npm run typecheck` runs the TypeScript compiler without emitting anything.
+
+CI runs the type check and `npm test`. It does not run the build or the browser test.
+
 ## URLs
 
 - `/?v=<id or full link>` opens one video.
 - `/?list=<playlist id>` opens a playlist in bulk mode.
 - `/?videos=<id,id,...>` opens several videos in bulk mode.
+- `/?playlist` opens the playlist page with nothing queued.
 
 ## How it works
 
@@ -63,14 +70,19 @@ The browser never talks to YouTube for transcripts. The Next.js route handlers d
 - `/api/chapters` reads chapters from the watch page and caches them in memory.
 - `/api/playlist` uses youtubei.js.
 
-The client, `components/App.tsx`, is a single client component that switches between the landing, result and bulk views using the History API. Paragraphs and every export format are built client-side in `lib/transcript.ts`.
+The client, `components/App.tsx`, is a single client component that switches between the landing, result, bulk and empty playlist views using the History API. Paragraphs and every export format are built client-side in `lib/transcript.ts`.
 
 ```
 app/            layout, page, api/{transcript,chapters,playlist}
-components/     App, TopBar, Landing, BulkView, DownloadMenu, Toast, icons
+components/     App, TopBar, Landing, BulkView, Controls, Sprite
   result/       ResultView, Transcript, NotesPopover
 hooks/          usePlayer, useFollowAlong, useNotes, usePrefs
+public/         css, js, fonts, icons, manifest
+electron/       the desktop shell
+test/           unit tests, e2e/
+proxy.ts        security headers and the per-request CSP nonce
 lib/
+  house/        the design system's scripts
   youtube/      server-side YouTube code
   transcript, links, format, bulk, notes, translate, player, browser, types
 ```

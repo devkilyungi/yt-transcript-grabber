@@ -12,7 +12,7 @@ export function GET(req: NextRequest) {
     try {
       return { chapters: await chaptersFor(id) };
     } catch {
-      return { chapters: [] }; // chapters are a nicety; never fail the page over them
+      return { chapters: [], failed: true }; // chapters are a nicety; the transcript still shows, with a retry
     }
   });
 }

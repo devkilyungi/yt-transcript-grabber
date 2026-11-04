@@ -1,10 +1,12 @@
 'use client';
 
-import { type CSSProperties, Fragment, memo, type MouseEvent, type RefObject } from 'react';
+import { Fragment, memo, type MouseEvent, type RefObject } from 'react';
 import type { Note, Paragraph } from '@/lib/types';
 import { rangesIn } from '@/lib/notes';
 import { fmtTime } from '@/lib/format';
 import { watchUrl } from '@/lib/links';
+import { useLate } from '../Controls';
+import { Icon } from '../Sprite';
 
 /* ---------- Layout: paragraphs split into highlight and find-match pieces ---------- */
 
@@ -47,8 +49,6 @@ export function layoutRows(paras: Paragraph[], notes: Note[], query: string) {
 
 /* ---------- Rendering ---------- */
 
-const SKELETON_WIDTHS = [96, 88, 100, 72, 94, 100, 64, 90, 98, 80];
-
 export function Transcript({ readerRef, rows, loading, ts, busy, videoId, active, currentHit, onSeek }: {
   readerRef: RefObject<HTMLElement | null>;
   rows: Row[];
@@ -62,22 +62,27 @@ export function Transcript({ readerRef, rows, loading, ts, busy, videoId, active
   currentHit: number;
   onSeek: (e: MouseEvent<HTMLAnchorElement>, t: number) => void;
 }) {
+  const late = useLate();
   return (
-    <article ref={readerRef} className={`card reader${ts ? ' with-ts' : ''}${busy ? ' busy' : ''}`}>
+    <article ref={readerRef} className="reader" aria-busy={busy || loading}>
       {loading ? (
-        <div className="skeleton">
-          {SKELETON_WIDTHS.map((w, i) => <div key={i} className="bar" style={{ width: `${w}%` } as CSSProperties} />)}
-        </div>
+        <div className="skeleton" hidden={!late}><i /><i /><i /><i /><i /><i /><i /></div>
       ) : rows.length ? rows.map((row, i) => (
         <Para key={i} row={row} ts={ts} videoId={videoId} active={i === active}
           currentHit={currentHit >= row.firstHit && currentHit < row.firstHit + row.hits ? currentHit : -1}
           onSeek={onSeek} />
       )) : (
-        <p className="empty">This video’s captions are empty.</p>
+        <div className="empty">
+          <Icon name="inbox" />
+          <strong>This video’s captions are empty</strong>
+          <p>YouTube has the track but nothing in it. Try another language from the list, if there is one.</p>
+        </div>
       )}
     </article>
   );
 }
+
+const FRESH_MS = 1000; // a highlight made this recently swipes on
 
 /** One paragraph. Memoized, so follow-along and find only re-render the rows that change. */
 const Para = memo(function Para({ row, ts, videoId, active, currentHit, onSeek }: {
@@ -91,19 +96,20 @@ const Para = memo(function Para({ row, ts, videoId, active, currentHit, onSeek }
   const { para } = row;
   const pieces = (list: Piece[]) => list.map((p, i) => p.hit < 0
     ? <Fragment key={i}>{p.text}</Fragment>
-    : <mark key={i} className={p.hit === currentHit ? 'f current' : 'f'}>{p.text}</mark>);
+    : <mark key={i} className={p.hit === currentHit ? 'find current' : 'find'}>{p.text}</mark>);
+  const markClass = (n: Note) => ['hl', n.note && 'has-note', Date.now() - n.at < FRESH_MS && 'fresh'].filter(Boolean).join(' ');
 
   return (
     <>
-      {para.chapter && <div className="chapter"><h3>{para.chapter.title}</h3></div>}
-      <div className={`para${active ? ' active' : ''}`} data-start={para.start}>
+      {para.chapter && <h2>{para.chapter.title}</h2>}
+      <div className={active ? 'para now' : 'para'} aria-current={active ? 'true' : undefined} data-start={para.start}>
         {ts && (
-          <a className="ts" href={watchUrl(videoId, para.start)} target="_blank" rel="noopener"
+          <a className="t" href={watchUrl(videoId, para.start)} target="_blank" rel="noreferrer" aria-label={`Play from ${fmtTime(para.start)}`}
             onClick={e => onSeek(e, para.start)}>{fmtTime(para.start)}</a>
         )}
         <p>
           {row.segments.map((s, i) => s.note
-            ? <mark key={i} className={s.note.note ? 'hl has-note' : 'hl'} data-note={s.note.id} title={s.note.note || undefined}>{pieces(s.pieces)}</mark>
+            ? <mark key={i} className={markClass(s.note)} data-note={s.note.id} title={s.note.note || undefined}>{pieces(s.pieces)}</mark>
             : <Fragment key={i}>{pieces(s.pieces)}</Fragment>)}
         </p>
       </div>

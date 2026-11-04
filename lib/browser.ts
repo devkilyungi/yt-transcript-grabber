@@ -44,7 +44,7 @@ export async function api<T>(path: string, params: Record<string, string | numbe
   try {
     res = await fetch(`${path}?${qs}`);
   } catch (e) {
-    throw new ApiError('Could not reach the app’s server. Is `npm run dev` still running?', { detail: String(e), code: 'offline' });
+    throw new ApiError('Couldn’t reach the app’s server.', { detail: 'Quit Transcript Grabber and open it again.', code: 'offline' });
   }
   let json: any;
   try { json = await res.json(); } catch { json = { error: 'The server sent an unexpected response.' }; }
@@ -73,48 +73,23 @@ export function replayClass(el: Element | null | undefined, cls: string) {
   el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
 }
 
-/* ---------- Menus ---------- */
-
-const CLOSE_MENUS = 'tg:close-menus';
-
-/** Close every open dropdown menu. */
-export const closeMenus = () => document.dispatchEvent(new Event(CLOSE_MENUS));
-export function onCloseMenus(fn: () => void) {
-  document.addEventListener(CLOSE_MENUS, fn);
-  return () => document.removeEventListener(CLOSE_MENUS, fn);
-}
-
 /* ---------- Feedback ---------- */
 
-type ToastListener = (msg: string) => void;
-const toastListeners = new Set<ToastListener>();
+type ToastOptions = { tone?: 'good' | 'bad'; action?: { label: string; run: () => void } };
 
-/** Show a short message in the toast at the bottom of the page. */
-export function toast(msg: string) {
-  toastListeners.forEach(fn => fn(msg));
-}
-export function onToast(fn: ToastListener) {
-  toastListeners.add(fn);
-  return () => { toastListeners.delete(fn); };
+/** A toast from the kit's dock: 4s for good news, 8s for bad. Its module touches the document as it loads, so it is imported on first use. */
+export function toast(title: string, { tone = 'good', action }: ToastOptions = {}) {
+  import('./house/toasts.js').then(t => t.toast({ tone, title, action, ms: tone === 'bad' ? 8000 : 4000 }));
 }
 
-const doneTimers = new WeakMap<Element, number>();
-
-/** Briefly swap a button's icon for a check mark. */
-export function flashDone(btn: Element | null | undefined) {
-  if (!btn) return;
-  btn.classList.add('done');
-  clearTimeout(doneTimers.get(btn));
-  doneTimers.set(btn, window.setTimeout(() => btn.classList.remove('done'), 1400));
-}
-
-export async function copyText(text: string, msg: string, btn?: Element | null) {
+export async function copyText(text: string, msg: string) {
   try {
     await navigator.clipboard.writeText(text);
-    flashDone(btn);
     toast(msg);
+    return true;
   } catch {
-    toast('Copy failed. Your browser blocked clipboard access');
+    toast('Copy failed. The system blocked clipboard access; try again.', { tone: 'bad' });
+    return false;
   }
 }
 
@@ -125,16 +100,4 @@ export function downloadFile(content: string, name: string, type: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   toast(`Saved ${name}`);
-}
-
-/* ---------- Theme ---------- */
-
-export function toggleTheme() {
-  const root = document.documentElement;
-  const current = root.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  const next = current === 'dark' ? 'light' : 'dark';
-  const apply = () => { root.dataset.theme = next; };
-  if (document.startViewTransition && !reducedMotion()) document.startViewTransition(apply);
-  else apply();
-  try { localStorage.setItem('tg.theme', next); } catch {}
 }

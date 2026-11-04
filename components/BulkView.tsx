@@ -1,27 +1,33 @@
 'use client';
 
-import { type CSSProperties, type KeyboardEvent, type MouseEvent, useSyncExternalStore } from 'react';
+import { type ReactNode, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { BulkItem, BulkItemState, BulkQueue } from '@/lib/bulk';
 import type { Prefs, Transcript } from '@/lib/types';
 import { buildParagraphs, bulkPrompt, type ExportContext, jsonRecord, markdown, plainText } from '@/lib/transcript';
 import { fmtTime, plural, safeFilename } from '@/lib/format';
-import { thumbUrl } from '@/lib/links';
-import { copyText, downloadFile } from '@/lib/browser';
-import { DownloadMenu, type MenuEntry } from './DownloadMenu';
-import { CopyIcon, DoneSwap, SparkleIcon } from './icons';
+import { downloadFile } from '@/lib/browser';
+import { roll } from '@/lib/house/roll.js';
+import { CopyButton, Downloads, type Format } from './Controls';
+import { Icon } from './Sprite';
 
-const STATUS: Record<BulkItemState, string> = { queued: 'Queued', loading: 'Fetching', done: 'Ready', error: 'Failed' };
+const PILL: Record<BulkItemState, { tone?: string; icon?: string; label: string; state: string }> = {
+  queued: { label: 'Queued', state: 'queued' },
+  loading: { tone: 'accent', label: 'Fetching', state: 'running' },
+  done: { tone: 'good', icon: 'check', label: 'Done', state: 'done' },
+  error: { tone: 'bad', icon: 'x', label: 'Failed', state: 'failed' },
+};
 
-const DOWNLOADS: MenuEntry[] = [
-  { heading: 'One combined file' },
-  { fmt: 'md', label: 'Markdown', ext: 'md' },
-  { fmt: 'txt', label: 'Plain text', ext: 'txt' },
-  { fmt: 'json', label: 'JSON', ext: 'json' },
+const DOWNLOADS: Format[] = [
+  { fmt: 'md', label: 'Markdown (.md)' },
+  { fmt: 'txt', label: 'Text (.txt)' },
+  { fmt: 'json', label: 'JSON' },
 ];
 
-export function BulkView({ queue, prefs, onOpen }: {
+export function BulkView({ queue, prefs, form, onOpen }: {
   queue: BulkQueue;
   prefs: Prefs;
+  /** The link box, shown until a playlist is open. */
+  form: ReactNode;
   onOpen: (id: string, data: Transcript) => void;
 }) {
   useSyncExternalStore(queue.subscribe, queue.getVersion, queue.getVersion);
@@ -32,14 +38,12 @@ export function BulkView({ queue, prefs, onOpen }: {
   const left = s.items.filter(i => i.state === 'queued' || i.state === 'loading').length;
   const n = s.items.length;
   const pct = n ? Math.round(((done.length + failed.length) / n) * 100) : 0;
-
   const wait = s.resumeAt ? Math.max(0, Math.ceil((s.resumeAt - Date.now()) / 1000)) : 0;
-  const status = s.blocked ? 'YouTube is limiting requests from this network. '
-      + (s.resumeAt ? `Trying again in ${wait < 60 ? `${wait}s` : `${Math.floor(wait / 60)}m ${wait % 60}s`}.` : 'Paused; resume in a few minutes.')
-    : !n ? ''
-    : !left ? (failed.length ? `${done.length} ready, ${failed.length} failed` : `All ${plural(done.length, 'transcript')} ready`)
-    : s.paused ? `Paused · ${done.length} of ${n} ready`
-    : `${done.length} of ${n} ready` + (failed.length ? ` · ${failed.length} failed` : '');
+
+  const meter = useRef<HTMLDivElement>(null);
+  useEffect(() => { meter.current?.style.setProperty('--v', String(pct)); }, [pct]);
+  const countdown = useRef<HTMLSpanElement>(null);
+  useEffect(() => { if (countdown.current) roll(countdown.current, String(wait)); }, [wait]);
 
   /* ---------- Exports: every finished transcript in one file ---------- */
 
@@ -61,15 +65,6 @@ export function BulkView({ queue, prefs, onOpen }: {
     downloadFile(combined(md ? markdown : plainText) + '\n', `${name()}.${fmt}`, md ? 'text/markdown' : 'text/plain');
   };
 
-  /* ---------- Rows ---------- */
-
-  const open = (item: BulkItem) => { if (item.state === 'done') onOpen(item.id, item.data!); };
-  const rowClick = (e: MouseEvent, item: BulkItem) => { if (!(e.target as Element).closest('button')) open(item); };
-  const rowKey = (e: KeyboardEvent, item: BulkItem) => {
-    if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
-    e.preventDefault();
-    open(item);
-  };
   const sub = (item: BulkItem) =>
     item.state === 'done' ? `${plural(item.words ?? 0, 'word')} · ${item.data!.language}`
     : item.state === 'error' ? item.error
@@ -77,52 +72,84 @@ export function BulkView({ queue, prefs, onOpen }: {
     : item.duration ? fmtTime(item.duration) : 'Waiting';
 
   return (
-    <main className="bulk view">
-      <div className="card bulk-head">
-        <div className="eyebrow">{s.eyebrow}</div>
-        <h2>{s.key ? s.title : 'Reading playlist…'}</h2>
-        <div className="sub">{s.sub}</div>
-        <div className="progress" role="progressbar" aria-label="Transcripts fetched" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-          <div style={{ width: `${pct}%` }} />
-        </div>
-        <div className="bulk-status">
-          <span>{status}</span>
-          <span className="grow" />
-          {failed.length > 0 && !left && <button className="btn ghost" type="button" onClick={() => queue.retry(failed)}>Retry failed</button>}
-          {left > 0 && <button className="btn ghost" type="button" onClick={queue.togglePause}>{s.paused ? 'Resume' : 'Pause'}</button>}
-        </div>
-        <div className="bulk-actions">
-          <button className="btn primary" type="button" disabled={!done.length}
-            onClick={e => copyText(bulkPrompt(done.length) + combined(markdown), `Copied ${plural(done.length, 'transcript')} with a summary prompt`, e.currentTarget)}>
-            <DoneSwap icon={SparkleIcon} />
-            Copy all for summary
-          </button>
-          <button className="btn" type="button" disabled={!done.length}
-            onClick={e => copyText(combined(markdown), `Copied ${plural(done.length, 'transcript')}`, e.currentTarget)}>
-            <DoneSwap icon={CopyIcon} size={15} />
-            Copy all
-          </button>
-          <DownloadMenu label="Download all" entries={DOWNLOADS} onPick={download} disabled={!done.length} down />
-        </div>
+    <section className="page-enter">
+      <div className="hero">
+        <h1>A whole playlist.</h1>
+        <p className="lede">Every video’s transcript, two at a time. Leave the app open; you can pause and pick up where you left off.</p>
+        {!s.key && form}
       </div>
 
-      <ol className="bulk-list">
-        {s.items.map((item, i) => (
-          <li key={item.id} className={`bulk-row ${item.state}`} style={{ '--i': i } as CSSProperties}
-            tabIndex={item.state === 'done' ? 0 : -1} onClick={e => rowClick(e, item)} onKeyDown={e => rowKey(e, item)}>
-            <span className="idx">{i + 1}</span>
-            <div className="bthumb"><img src={thumbUrl(item.id)} alt="" loading="lazy" /></div>
+      {!s.key && (
+        <div className="empty">
+          <Icon name="inbox" />
+          <strong>Nothing queued yet</strong>
+          <p>Paste a playlist link, or several video links at once, and they line up here.</p>
+        </div>
+      )}
+
+      {s.blocked && (
+        <div className="notice" data-tone="warn" role="status">
+          <Icon name="warn" />
+          <div>
+            <strong>YouTube asked us to slow down</strong>
+            {s.resumeAt
+              ? <p>Resuming in <span ref={countdown} className="countdown" /> s. Nothing to do; finished transcripts are kept.</p>
+              : <p>Paused. Resume in a few minutes; finished transcripts are kept.</p>}
+          </div>
+        </div>
+      )}
+
+      {!!s.key && (
+        <section className="stack" aria-labelledby="pl-h">
+          <div className="card-head">
             <div>
-              <div className="bt">{item.data?.title || item.title || item.id}</div>
-              <div className="bs">{sub(item)}</div>
+              <h2 id="pl-h">{s.title}</h2>
+              {s.sub && <p className="muted">{s.sub}</p>}
             </div>
-            <div className="end">
-              <span className="status">{STATUS[item.state]}</span>
-              {item.state === 'error' && <button className="btn ghost retry" type="button" onClick={() => queue.retry([item])}>Retry</button>}
+            <div className="row">
+              {left > 0 && (
+                <button className="btn sm" type="button" onClick={queue.togglePause}>
+                  <Icon name={s.paused ? 'play' : 'pause'} />{s.paused ? 'Resume' : 'Pause'}
+                </button>
+              )}
+              {failed.length > 0 && !left && (
+                <button className="btn sm" type="button" onClick={() => queue.retry(failed)}><Icon name="refresh" />Retry failed</button>
+              )}
             </div>
-          </li>
-        ))}
-      </ol>
-    </main>
+          </div>
+
+          <div className="meter-row">
+            <div className="row">
+              <span><span className="num">{done.length}</span> of <span className="num">{n}</span> done{failed.length > 0 && <> · <span className="num">{failed.length}</span> failed</>}{s.paused && !s.blocked && ' · paused'}</span>
+              <span className="num muted">{pct}%</span>
+            </div>
+            <div ref={meter} className="meter" role="progressbar" aria-label="Playlist progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><i /></div>
+          </div>
+
+          <div className="row">
+            <CopyButton className="btn primary" label="Copy all for summary" disabled={!done.length}
+              getText={() => bulkPrompt(done.length) + combined(markdown)} message={`Copied ${plural(done.length, 'transcript')} with a summary prompt`} />
+            <CopyButton label="Copy all" disabled={!done.length} getText={() => combined(markdown)} message={`Copied ${plural(done.length, 'transcript')}`} />
+            <Downloads formats={DOWNLOADS} onPick={download} disabled={!done.length} label="Download all" />
+          </div>
+
+          <ol className="queue">
+            {s.items.map((item, i) => {
+              const pill = PILL[item.state];
+              return (
+                <li key={item.id} data-state={pill.state}>
+                  <span className="num">{i + 1}</span>
+                  <span className="title">{item.data?.title || item.title || item.id}<small>{sub(item)}</small></span>
+                  <span className="pill" data-tone={pill.tone}>{pill.icon && <Icon name={pill.icon} />}{pill.label}</span>
+                  {item.state === 'done' && <button className="btn sm ghost" type="button" onClick={() => onOpen(item.id, item.data!)}>Open</button>}
+                  {item.state === 'error' && <button className="btn sm ghost" type="button" onClick={() => queue.retry([item])}>Retry</button>}
+                  {item.state !== 'done' && item.state !== 'error' && <span />}
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
+    </section>
   );
 }

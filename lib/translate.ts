@@ -42,7 +42,7 @@ export async function translateOnDevice(
     new Promise<Availability>(resolve => setTimeout(resolve, AVAILABILITY_TIMEOUT_MS, 'unavailable')),
   ]);
   if (availability === 'unavailable') {
-    throw new Error(`YouTube is limiting translations right now, and this browser can’t translate ${data.language} to ${target.name} itself`);
+    throw new Error(`YouTube is limiting translations right now, and this Mac can’t translate ${data.language} to ${target.name} itself`);
   }
 
   const translator = await Translator.create({

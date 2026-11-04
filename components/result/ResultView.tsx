@@ -6,29 +6,25 @@ import { buildParagraphs, type ExportContext, FORMATS, type Format, languageLine
 import { notesMarkdown } from '@/lib/notes';
 import { fmtTime, safeFilename, wordCount } from '@/lib/format';
 import { thumbUrl, watchUrl } from '@/lib/links';
-import { copyText, downloadFile, replayClass, scrollBehavior, toast } from '@/lib/browser';
+import { downloadFile, replayClass, scrollBehavior, toast } from '@/lib/browser';
 import { useNotes } from '@/hooks/useNotes';
 import { usePlayer } from '@/hooks/usePlayer';
 import { useFollowAlong } from '@/hooks/useFollowAlong';
-import { DownloadMenu, type MenuEntry } from '../DownloadMenu';
-import { BackIcon, CloseIcon, CopyIcon, DoneSwap, ExternalIcon, PlayIcon, SearchIcon, SparkleIcon } from '../icons';
+import { CopyButton, Downloads, type Format as DownloadFormat } from '../Controls';
+import { Icon } from '../Sprite';
 import { layoutRows, Transcript as Reader } from './Transcript';
 import { NotesPopover } from './NotesPopover';
 
 const WPM = 230;
 const FIND_DEBOUNCE_MS = 120;
 
-const DOWNLOADS: MenuEntry[] = [
-  { heading: 'Read' },
-  { fmt: 'txt', label: 'Plain text', ext: 'txt' },
-  { fmt: 'md', label: 'Markdown', ext: 'md' },
-  { heading: 'Subtitles' },
-  { fmt: 'srt', label: 'SubRip', ext: 'srt' },
-  { fmt: 'vtt', label: 'WebVTT', ext: 'vtt' },
-  { heading: 'Data' },
-  { fmt: 'json', label: 'JSON', ext: 'json' },
-  { fmt: 'csv', label: 'Spreadsheet', ext: 'csv' },
-  { divider: true },
+const DOWNLOADS: DownloadFormat[] = [
+  { fmt: 'txt', label: 'Text (.txt)' },
+  { fmt: 'md', label: 'Markdown (.md)' },
+  { fmt: 'srt', label: 'Subtitles (.srt)' },
+  { fmt: 'vtt', label: 'Subtitles (.vtt)' },
+  { fmt: 'json', label: 'JSON' },
+  { fmt: 'csv', label: 'Spreadsheet (.csv)' },
 ];
 
 export type ResultProps = {
@@ -38,6 +34,9 @@ export type ResultProps = {
   /** The transcript as fetched, untranslated. */
   source: Transcript | null;
   chapters: Chapter[];
+  /** Chapters didn't load; the transcript is still complete. */
+  chaptersFailed: boolean;
+  onRetryChapters: () => void;
   prefs: Prefs;
   setPref: <K extends keyof Prefs>(key: K, value: Prefs[K]) => void;
   /** A different language or video is loading, or a translation is running. */
@@ -52,7 +51,7 @@ export type ResultProps = {
 };
 
 export function ResultView(props: ResultProps) {
-  const { videoId, data, chapters, prefs, setPref, busy, fromBulk, onBack } = props;
+  const { videoId, data, chapters, chaptersFailed, onRetryChapters, prefs, setPref, busy, fromBulk, onBack } = props;
   const readerRef = useRef<HTMLElement>(null);
   const notes = useNotes(videoId);
 
@@ -80,6 +79,10 @@ export function ResultView(props: ResultProps) {
 
   /* ---------- Find ---------- */
 
+  const [findOpen, setFindOpen] = useState(false);
+  const [findFocus, focusFind] = useReducer((n: number) => n + 1, 0);
+  const findInputRef = useRef<HTMLInputElement>(null);
+  const findOpener = useRef<HTMLButtonElement>(null);
   const [findInput, setFindInput] = useState('');
   const [query, setQuery] = useState('');
   const [hit, setHit] = useState(-1);
@@ -97,20 +100,46 @@ export function ResultView(props: ResultProps) {
   const shownHit = query && hits ? Math.min(Math.max(hit, 0), hits - 1) : -1;
 
   useEffect(() => {
-    const el = readerRef.current?.querySelector('mark.f.current');
+    const el = readerRef.current?.querySelector('mark.find.current');
     if (!el) return;
     pauseFollow();
     el.scrollIntoView({ block: 'center', behavior: scrollBehavior() });
   }, [scrollTick, pauseFollow]);
 
+  const step = (by: number) => {
+    setHit((shownHit + by + hits) % hits);
+    scrollToHit();
+  };
   const findKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && hits) {
       e.preventDefault();
-      setHit((shownHit + (e.shiftKey ? -1 : 1) + hits) % hits);
-      scrollToHit();
+      step(e.shiftKey ? -1 : 1);
     }
-    if (e.key === 'Escape' && findInput) { e.stopPropagation(); setFindInput(''); setQuery(''); }
+    if (e.key === 'Escape') { e.stopPropagation(); closeFind(); }
   };
+  const closeFind = () => {
+    setFindOpen(false);
+    setFindInput('');
+    setQuery('');
+    findOpener.current?.focus();
+  };
+
+  // Takes over the browser's find, which can't see past the reader's own marks and can't count them.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key !== 'f') return;
+      e.preventDefault();
+      setFindOpen(true);
+      focusFind();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+  useEffect(() => {
+    if (!findFocus) return;
+    findInputRef.current?.focus();
+    findInputRef.current?.select();
+  }, [findFocus]);
   const findCount = !findInput.trim() || !query ? '' : hits ? `${shownHit + 1} of ${hits}` : 'No matches';
 
   /* ---------- Notes ---------- */
@@ -119,10 +148,10 @@ export function ResultView(props: ResultProps) {
     const reader = readerRef.current;
     const mark = reader?.querySelector(`mark.hl[data-note="${note.id}"]`);
     const target = mark ?? reader?.querySelector(`.para[data-start="${note.start}"]`);
-    if (!target) return toast('That highlight’s text isn’t in this version of the transcript');
+    if (!target) return toast('That highlight’s text isn’t in this version of the transcript', { tone: 'bad' });
     pauseFollow();
     target.scrollIntoView({ block: 'center', behavior: scrollBehavior() });
-    replayClass(mark, 'flash');
+    replayClass(mark, 'fresh');
   };
 
   /* ---------- Copy & download ---------- */
@@ -135,117 +164,149 @@ export function ResultView(props: ResultProps) {
     const f = FORMATS[fmt as Format];
     downloadFile(f.fn(ctx()), `${baseName()}.${f.ext}`, f.type);
   };
-  const downloads = useMemo<MenuEntry[]>(
-    () => [...DOWNLOADS, { fmt: 'notes', label: 'Highlights & notes', ext: 'md', disabled: !notes.notes.length }],
-    [notes.notes.length],
-  );
+  const hasNotes = notes.notes.length > 0;
+  const downloads = useMemo(() => [...DOWNLOADS, { fmt: 'notes', label: 'Highlights & notes (.md)', disabled: !hasNotes }], [hasNotes]);
 
   const words = useMemo(() => paras.reduce((n, p) => n + wordCount(p.text), 0), [paras]);
   const last = data?.snippets.at(-1);
+  const duration = last ? fmtTime(last.start + last.duration) : '';
+
+  // The chapter holding the paragraph being spoken.
+  const spoken = prefs.follow && follow.active >= 0 ? paras[follow.active]?.start : undefined;
+  const currentChapter = spoken === undefined ? -1 : chapters.findLastIndex(c => c.start <= spoken + 0.25);
+
+  const jumpToChapter = (t: number) => {
+    if (seek(t)) resumeFollow();
+    else window.open(watchUrl(videoId, t), '_blank', 'noreferrer');
+  };
 
   return (
     <>
-      <main className="result view">
-        <aside className="side">
-          <div className="card video-card">
-            <div ref={player.slotRef} className={`player-slot${player.live ? ' live' : ''}`}>
-              <button className="poster" type="button" aria-label="Play video here" onClick={player.togglePlay}>
-                <img src={thumbUrl(videoId)} alt="" />
-                <span className="play"><PlayIcon /></span>
-                <span className="dur">{last ? fmtTime(last.start + last.duration) : ''}</span>
+      <section className="page-enter">
+        <div className="result" aria-busy={!data}>
+          <aside className="side" aria-label="Video and options">
+            <div ref={player.slotRef} className="player">
+              <button className="poster" type="button" aria-label="Play video here" hidden={player.live} onClick={player.togglePlay}>
+                <img className="thumb" src={thumbUrl(videoId)} alt="" />
+                <span className="play"><Icon name="play" /></span>
+                {duration && <span className="cap num">{duration}</span>}
               </button>
-              <div ref={player.frameRef} className={`frame${player.docked ? ' docked' : ''}`} />
-            </div>
-            <div className="video-meta">
-              <h2>{data ? data.title || 'Untitled video' : ''}</h2>
-              <div className="author">
-                <span>{data?.author}</span>
-                <a href={watchUrl(videoId)} target="_blank" rel="noopener" title="Open on YouTube">
-                  <ExternalIcon />
-                  YouTube
-                </a>
+              <div className={player.docked ? 'mini' : 'player-frame'} hidden={!player.live} role={player.docked ? 'region' : undefined} aria-label={player.docked ? 'Video' : undefined}>
+                <div ref={player.frameRef} className="frame" />
+                {player.docked && (
+                  <div className="mini-bar">
+                    <span>{data?.title}</span>
+                    <button className="icon-btn" type="button" aria-label="Close mini player" onClick={player.dismiss}><Icon name="x" /></button>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="stats">
-              <div className="stat"><b>{data ? words.toLocaleString() : '–'}</b><span>words</span></div>
-              <div className="stat"><b>{data ? `${Math.max(1, Math.round(words / WPM))} min` : '–'}</b><span>read time</span></div>
-              <div className="stat">
-                <b>{data ? (chapters.length || paras.length).toLocaleString() : '–'}</b>
-                <span>{chapters.length ? (chapters.length === 1 ? 'chapter' : 'chapters') : 'paragraphs'}</span>
-              </div>
+
+            <div className="stack">
+              {data && <h1 className="video-title">{data.title || 'Untitled video'}</h1>}
+              <p className="meta">
+                {data?.author && <span>{data.author}</span>}
+                {duration && <span className="num">{duration}</span>}
+                <a href={watchUrl(videoId)} target="_blank" rel="noreferrer">Open on YouTube</a>
+              </p>
             </div>
-          </div>
 
-          <Options {...props} onFollow={on => { setPref('follow', on); resumeFollow(); }} />
+            {fromBulk && <button className="btn ghost sm" type="button" onClick={onBack}>Back to playlist</button>}
 
-          <div className="actions">
-            <button className="btn primary lg block" type="button" disabled={!data} title="Copies the transcript with a summary request in front"
-              onClick={e => copyText(summaryPrompt(chapters.length > 0) + plainText(ctx()), 'Copied with a summary prompt. Paste it into Claude', e.currentTarget)}>
-              <DoneSwap icon={SparkleIcon} />
-              Copy for summary
-            </button>
-            <div className="row">
-              <button className="btn" type="button" disabled={!data} onClick={e => copyText(plainText(ctx()), 'Transcript copied', e.currentTarget)}>
-                <DoneSwap icon={CopyIcon} size={15} />
-                Copy
-              </button>
-              <DownloadMenu label="Download" entries={downloads} onPick={download} disabled={!data} />
-            </div>
-          </div>
+            <Options {...props} onFollow={on => { setPref('follow', on); resumeFollow(); }} />
 
-          {notes.notes.length > 0 && data && (
-            <div className="card notes-card">
-              <div className="card-head">
-                <h3>Highlights <span className="count-badge">{notes.notes.length}</span></h3>
-                <button className="btn ghost icon-only" type="button" title="Copy highlights & notes" aria-label="Copy highlights and notes"
-                  onClick={e => copyText(notesMarkdown(notes.notes, data), 'Highlights copied', e.currentTarget)}>
-                  <DoneSwap icon={CopyIcon} size={15} />
-                </button>
-              </div>
-              <ul className="notes-list">
-                {notes.notes.map(n => (
-                  <li key={n.id}>
-                    <button type="button" className="note-item" onClick={() => jumpToNote(n)}>
-                      <div className="t">{fmtTime(n.start)}</div>
-                      <div className="q">{n.quote}</div>
-                      {n.note && <div className="n">{n.note}</div>}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </aside>
-
-        <div className="main">
-          <div className="reader-head">
-            {fromBulk && (
-              <button className="btn ghost back" type="button" onClick={onBack}>
-                <BackIcon />
-                Playlist
-              </button>
+            {chapters.length > 0 && (
+              <section className="stack" aria-labelledby="ch-h">
+                <p className="caps" id="ch-h">Chapters</p>
+                <ol className="chapters">
+                  {chapters.map((c, i) => (
+                    <li key={c.start}>
+                      <button type="button" aria-current={i === currentChapter ? 'true' : undefined} onClick={() => jumpToChapter(c.start)}>
+                        <span className="num">{fmtTime(c.start)}</span><span>{c.title}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </section>
             )}
-            <label className="find">
-              <SearchIcon />
-              <input id="find" type="text" value={findInput} onChange={e => setFindInput(e.target.value)} onKeyDown={findKeys}
-                placeholder="Find in transcript" autoComplete="off" aria-label="Find in transcript" />
-              <span className="count">{findCount}</span>
-            </label>
-            <span className="note">{captionLine(props)}</span>
-          </div>
-          <Reader readerRef={readerRef} rows={rows} loading={!data} ts={prefs.ts} busy={busy} videoId={videoId}
-            active={prefs.follow ? follow.active : -1} currentHit={shownHit} onSeek={onSeek} />
+
+            {hasNotes && data && (
+              <section className="stack" aria-labelledby="hl-h">
+                <div className="card-head">
+                  <p className="caps" id="hl-h">Highlights <span className="num">{notes.notes.length}</span></p>
+                  <CopyButton className="btn ghost sm" label="Copy" message="Highlights copied" getText={() => notesMarkdown(notes.notes, data)} />
+                </div>
+                <ul className="chapters">
+                  {notes.notes.map(n => (
+                    <li key={n.id}>
+                      <button type="button" onClick={() => jumpToNote(n)}>
+                        <span className="num">{fmtTime(n.start)}</span>
+                        <span><span className="note-quote">{n.quote}</span>{n.note && <small>{n.note}</small>}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </aside>
+
+          <section className="stack" aria-label="Transcript">
+            <div className="reader-head">
+              <div className="row">
+                <CopyButton className="btn primary" label="Copy for summary" disabled={!data} message="Copied with a summary prompt. Paste it into Claude"
+                  getText={() => summaryPrompt(chapters.length > 0) + plainText(ctx())} />
+                <CopyButton label="Copy" disabled={!data} message="Transcript copied" getText={() => plainText(ctx())} />
+                <Downloads formats={downloads} onPick={download} disabled={!data} />
+              </div>
+              <button ref={findOpener} className="btn ghost sm find-open" type="button" hidden={findOpen} onClick={() => { setFindOpen(true); focusFind(); }}>
+                <Icon name="search" />Find <span className="kbd">⌘F</span>
+              </button>
+            </div>
+
+            {data && (
+              <p className="muted">
+                <span className="num">{paras.length.toLocaleString()}</span> {paras.length === 1 ? 'paragraph' : 'paragraphs'}
+                {chapters.length > 0 && <> · <span className="num">{chapters.length}</span> {chapters.length === 1 ? 'chapter' : 'chapters'}</>}
+                {' · '}<span className="num">{words.toLocaleString()}</span> words
+                {' · '}about <span className="num">{Math.max(1, Math.round(words / WPM))}</span> min to read
+              </p>
+            )}
+            <p className="muted" role="status">{captionLine(props)}</p>
+
+            {findOpen && (
+              <div className="find-bar" role="search">
+                <Icon name="search" />
+                <input ref={findInputRef} id="find" className="input" type="search" value={findInput} onChange={e => setFindInput(e.target.value)} onKeyDown={findKeys}
+                  placeholder="Find in transcript" autoComplete="off" aria-label="Find in transcript" />
+                <span className="count num" aria-live="polite">{findCount}</span>
+                <button className="icon-btn" type="button" aria-label="Previous match" disabled={!hits} onClick={() => step(-1)}><Icon name="up" /></button>
+                <button className="icon-btn" type="button" aria-label="Next match" disabled={!hits} onClick={() => step(1)}><Icon name="down" /></button>
+                <button className="icon-btn" type="button" aria-label="Close find" onClick={closeFind}><Icon name="x" /></button>
+              </div>
+            )}
+
+            {chaptersFailed && (
+              <div className="notice" data-tone="warn" role="status">
+                <Icon name="warn" />
+                <div>
+                  <strong>Chapters didn’t load</strong>
+                  <p>The transcript is complete.</p>
+                  <button className="btn sm" type="button" onClick={onRetryChapters}><Icon name="refresh" />Retry chapters</button>
+                </div>
+              </div>
+            )}
+
+            <Reader readerRef={readerRef} rows={rows} loading={!data} ts={prefs.ts} busy={busy} videoId={videoId}
+              active={prefs.follow ? follow.active : -1} currentHit={shownHit} onSeek={onSeek} />
+          </section>
         </div>
-      </main>
+      </section>
 
       <NotesPopover readerRef={readerRef} notes={notes} />
-      <button className="follow-pill" type="button" hidden={!follow.lost}
+      <button className="btn now-pill" type="button" hidden={!follow.lost}
         // Blur first: hiding a focused button makes Chromium cancel the smooth scroll back.
         onClick={e => { e.currentTarget.blur(); resumeFollow(); }}>
-        <span className="dot" /> Back to now
-      </button>
-      <button className="undock" type="button" title="Close mini player" aria-label="Close mini player" hidden={!player.docked} onClick={player.dismiss}>
-        <CloseIcon />
+        <Icon name="down" />Back to now
       </button>
     </>
   );
@@ -268,46 +329,49 @@ function Options({ data, source, prefs, setPref, busy, translatingTo, onLanguage
   const langValue = langPick ?? (source ? `${source.languageCode}|${source.isGenerated ? 1 : 0}` : '');
 
   return (
-    <div className="card options">
-      <Switch label="Timestamps" hint="Click one to jump the video there" checked={prefs.ts} onChange={on => setPref('ts', on)} aria="Show timestamps" />
-      <Switch label="Follow along" hint="Highlight and scroll with the video" checked={prefs.follow} onChange={onFollow} aria="Follow along with the video" />
-      <Switch label="Hide sound cues" hint="[Music], [Applause], ♪" checked={prefs.tags} onChange={on => setPref('tags', on)} aria="Hide sound cues" />
-      <div className="opt">
-        <div><div>Language</div><div className="hint">{source ? (source.isGenerated ? 'Auto-generated captions' : 'Captions by the creator') : ''}</div></div>
-        <select className="select" aria-label="Transcript language" value={langValue} disabled={tracks.length < 2}
-          onChange={e => {
-            const [code, generated] = e.target.value.split('|');
-            setLangPick(e.target.value);
-            onLanguage(code, generated === '1');
-          }}>
-          {tracks.map(l => <option key={`${l.code}|${l.generated}`} value={`${l.code}|${l.generated ? 1 : 0}`}>{l.name}</option>)}
-        </select>
-      </div>
-      <div className="opt">
-        <div>
-          <div>Translate</div>
-          <div className="hint">
-            {!source ? '' : !translations.length ? 'Not offered for this video' : data?.translation?.onDevice ? 'Translated on this device' : 'Via YouTube'}
-          </div>
+    <section className="options" aria-labelledby="opt-h">
+      <p className="caps" id="opt-h">Options</p>
+      <Switch label="Timestamps" hint="Click one to jump the video there" checked={prefs.ts} onChange={on => setPref('ts', on)} />
+      <Switch label="Follow along" hint="Highlight and scroll with the video" checked={prefs.follow} onChange={onFollow} />
+      <Switch label="Hide sound cues" hint="[Music], [Applause], ♪" checked={prefs.tags} onChange={on => setPref('tags', on)} />
+      <div className="field">
+        <label htmlFor="lang">Language</label>
+        <div className="select">
+          <select id="lang" className="input" value={langValue} disabled={tracks.length < 2} aria-describedby="lang-hint"
+            onChange={e => {
+              const [code, generated] = e.target.value.split('|');
+              setLangPick(e.target.value);
+              onLanguage(code, generated === '1');
+            }}>
+            {tracks.map(l => <option key={`${l.code}|${l.generated}`} value={`${l.code}|${l.generated ? 1 : 0}`}>{l.name}</option>)}
+          </select>
+          <Icon name="chev" />
         </div>
-        <select className="select" aria-label="Translate transcript" value={translatingTo ?? data?.translation?.code ?? ''}
-          disabled={!translations.length || translatingTo != null} onChange={e => onTranslate(e.target.value)}>
-          <option value="">Original</option>
-          {translations.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
-        </select>
+        <small className="muted" id="lang-hint">{source ? (source.isGenerated ? 'Auto-generated captions' : 'Captions by the creator') : ''}</small>
       </div>
-    </div>
+      <div className="field">
+        <label htmlFor="tlang">Translate</label>
+        <div className="select">
+          <select id="tlang" className="input" value={translatingTo ?? data?.translation?.code ?? ''} aria-describedby="tlang-hint"
+            disabled={!translations.length || translatingTo != null} onChange={e => onTranslate(e.target.value)}>
+            <option value="">Original</option>
+            {translations.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+          </select>
+          <Icon name="chev" />
+        </div>
+        <small className="muted" id="tlang-hint">
+          {!source ? '' : !translations.length ? 'Not offered for this video' : data?.translation?.onDevice ? 'Translated on this device' : 'Via YouTube'}
+        </small>
+      </div>
+    </section>
   );
 }
 
-function Switch({ label, hint, checked, onChange, aria }: { label: string; hint: string; checked: boolean; onChange: (on: boolean) => void; aria: string }) {
+function Switch({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (on: boolean) => void }) {
   return (
-    <div className="opt">
-      <div><div>{label}</div><div className="hint">{hint}</div></div>
-      <label className="switch">
-        <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} aria-label={aria} />
-        <span />
-      </label>
-    </div>
+    <label className="switch">
+      <span>{label}<small>{hint}</small></span>
+      <input type="checkbox" role="switch" checked={checked} onChange={e => onChange(e.target.checked)} />
+    </label>
   );
 }

@@ -4,6 +4,7 @@ import { type KeyboardEvent, type RefObject, useEffect, useLayoutEffect, useRef,
 import type { NotesApi } from '@/hooks/useNotes';
 import { type Anchor, selectionTarget } from '@/lib/notes';
 import { copyText } from '@/lib/browser';
+import { Icon } from '../Sprite';
 
 type Pop =
   | { mode: 'tools'; anchor: Anchor | null; rect: DOMRect }
@@ -15,9 +16,9 @@ type Pop =
  */
 export function NotesPopover({ readerRef, notes }: { readerRef: RefObject<HTMLElement | null>; notes: NotesApi }) {
   const [pop, setPop] = useState<Pop | null>(null);
-  const [pos, setPos] = useState({ x: 0, y: 0, below: false });
   const popRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const opener = useRef<HTMLElement | null>(null); // focus goes back here when the editor closes
 
   // Listeners below read the latest values through this ref.
   const latest = useRef({ pop, notes });
@@ -32,6 +33,7 @@ export function NotesPopover({ readerRef, notes }: { readerRef: RefObject<HTMLEl
       const note = api.notes.find(n => n.id === pop.noteId);
       const text = pop.draft.trim();
       if (note && text !== note.note) api.setText(note.id, text);
+      if (opener.current?.isConnected) opener.current.focus({ preventScroll: true });
     }
     setPop(null);
   };
@@ -40,6 +42,7 @@ export function NotesPopover({ readerRef, notes }: { readerRef: RefObject<HTMLEl
 
   const openEditor = (noteId: string) => {
     const note = latest.current.notes.notes.find(n => n.id === noteId);
+    opener.current = document.activeElement as HTMLElement | null;
     setPop({ mode: 'editor', noteId, draft: note?.note ?? '' });
   };
 
@@ -55,7 +58,10 @@ export function NotesPopover({ readerRef, notes }: { readerRef: RefObject<HTMLEl
     const below = rect.top < el.offsetHeight + 90; // the sticky header lives up there
     const half = el.offsetWidth / 2;
     const x = Math.min(Math.max(rect.left + rect.width / 2, half + 8), innerWidth - half - 8);
-    setPos({ x: x + scrollX, y: (below ? rect.bottom : rect.top) + scrollY, below });
+    // Placed through the CSSOM: the CSP has no unsafe-inline for style attributes, and transform leaves the entrance's translate alone.
+    el.style.left = `${x + scrollX}px`;
+    el.style.top = `${(below ? rect.bottom : rect.top) + scrollY}px`;
+    el.style.transform = below ? 'translate(-50%, 8px)' : 'translate(-50%, calc(-100% - 8px))';
   }, [anchoredTo, readerRef]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (pop?.mode === 'editor') textRef.current?.focus(); }, [pop?.mode]);
@@ -108,40 +114,29 @@ export function NotesPopover({ readerRef, notes }: { readerRef: RefObject<HTMLEl
   };
 
   return (
-    <div ref={popRef} className={`popover${pos.below ? ' below' : ''}`} hidden={!pop || (pop.mode === 'editor' && !editing)}
-      style={{ left: pos.x, top: pos.y }}>
+    <div ref={popRef} className={pop?.mode === 'editor' ? 'note-card' : 'pop'} role={pop?.mode === 'tools' ? 'toolbar' : undefined}
+      aria-label={pop?.mode === 'tools' ? 'Selection' : undefined} hidden={!pop || (pop.mode === 'editor' && !editing)}>
       {pop?.mode === 'tools' && (
-        <div className="tools">
+        <>
           {pop.anchor && <>
-            <Tool label="Highlight" icon="▍" onClick={() => highlight(pop.anchor!)} />
-            <Tool label="Note" icon="✎" onClick={() => addNote(pop.anchor!)} />
+            <button className="btn sm ghost" type="button" onClick={() => highlight(pop.anchor!)}><Icon name="pen" />Highlight</button>
+            <button className="btn sm ghost" type="button" onClick={() => addNote(pop.anchor!)}><Icon name="note" />Note</button>
           </>}
-          <Tool label="Copy" icon="⧉" onClick={copy} />
-        </div>
+          <button className="btn sm ghost" type="button" onClick={copy}><Icon name="copy" />Copy</button>
+        </>
       )}
       {pop?.mode === 'editor' && editing && (
-        <div className="editor">
-          <div className="q">{editing.quote}</div>
-          <textarea ref={textRef} value={pop.draft} placeholder="Add a note…" aria-label="Note" onKeyDown={editorKeys}
+        <>
+          <label className="label" htmlFor="note">Note</label>
+          <textarea ref={textRef} id="note" value={pop.draft} placeholder="Add a note…" onKeyDown={editorKeys}
             onChange={e => setPop({ ...pop, draft: e.target.value })} />
-          <div className="tools">
-            <span className="hint">{navigator.platform.startsWith('Mac') ? '⌘↵ to save' : 'Ctrl+↵ to save'}</span>
-            <span className="tools">
-              <Tool label="Delete" className="danger" onClick={() => remove(editing.id)} />
-              <Tool label="Done" onClick={close} />
-            </span>
+          <div className="row">
+            <button className="btn sm primary" type="button" onClick={close}>Save note</button>
+            <button className="btn sm ghost" type="button" onClick={() => setPop(null)}>Cancel</button>
+            <button className="btn sm ghost" type="button" onClick={() => remove(editing.id)}><Icon name="trash" />Remove highlight</button>
           </div>
-        </div>
+        </>
       )}
     </div>
-  );
-}
-
-function Tool({ label, icon, onClick, className }: { label: string; icon?: string; onClick: () => void; className?: string }) {
-  return (
-    <button type="button" className={className} onClick={onClick}>
-      {icon && <span aria-hidden="true">{icon}</span>}
-      {label}
-    </button>
   );
 }

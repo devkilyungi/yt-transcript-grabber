@@ -56,7 +56,7 @@ export function usePlayer(videoId: string, onTime: RefObject<(t: number) => void
     const s = r.current, id = s.videoId;
     let YT;
     try { YT = await loadYouTubeApi(); }
-    catch (e) { toast((e as Error).message); return; }
+    catch (e) { toast((e as Error).message, { tone: 'bad' }); return; }
     if (id !== s.videoId || s.player || !frameRef.current) return; // moved on meanwhile
 
     const mount = document.createElement('div');
@@ -73,7 +73,7 @@ export function usePlayer(videoId: string, onTime: RefObject<(t: number) => void
           if (!EMBED_BLOCKED.has(e.data)) return;
           s.embeddable = false;
           reset();
-          toast('This video can’t play here. Timestamps will open YouTube instead');
+          toast('This video can’t play here. Timestamps will open YouTube instead', { tone: 'bad' });
         },
       },
     });

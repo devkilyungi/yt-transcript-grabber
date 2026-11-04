@@ -72,7 +72,7 @@ function createWindow() {
     minHeight: 520,
     show: false,
     title: 'Transcript Grabber',
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#121110' : '#f6f3ee',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#16110c' : '#f1e9db',
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true },
   });
   win.once('ready-to-show', () => win.show());
