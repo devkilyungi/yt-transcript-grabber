@@ -42,7 +42,7 @@
 
 /* ---- the result: player and chapters on the left, the transcript on the right; stacked on phones ---- */
 .result { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: var(--space-8); align-items: start; }
-.side { position: sticky; top: calc(var(--bar-h) + var(--bar-top) + var(--space-4)); display: grid; gap: var(--space-4); }
+.side { position: sticky; top: calc(var(--bar-h) + var(--bar-top) + var(--space-4)); display: grid; gap: var(--space-4); /* max-content rows: once max-height caps the scrolling column, auto rows shrink and the overflow-hidden player spills over the options */ grid-auto-rows: max-content; }
 @media (max-width: 1000px) { .result { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); } .side { position: static; } }
 .player { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 9; border-radius: var(--radius-card); overflow: hidden; background: #0d0c0d; color: #fff; }
 .player .thumb { position: absolute; inset: 0; border-radius: 0; opacity: 0.7; }

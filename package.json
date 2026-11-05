@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start --port 8765",
     "typecheck": "tsc --noEmit",
-    "test": "node --test test/*.test.mjs",
+    "test": "node --import ./test/resolve-ts.mjs --test test/*.test.mjs",
     "test:e2e": "node test/e2e/app.mjs",
     "build:server": "next build && node scripts/prepare-standalone.mjs",
     "app": "npm run build:server && electron electron",

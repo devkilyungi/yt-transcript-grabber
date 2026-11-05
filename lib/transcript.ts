@@ -21,7 +21,7 @@ export function cleanText(text: string, hideTags: boolean) {
  */
 export function buildParagraphs(snippets: Snippet[], { hideTags = true, chapters = [] as Chapter[] } = {}): Paragraph[] {
   const paras: Paragraph[] = [];
-  let cur: Paragraph | null = null, prevEnd = 0, ci = 0, pendingChapter: Chapter | null = null;
+  let cur: Paragraph | null = null, prevEnd = 0, ci = 0, pendingChapter: Chapter | null = null, pendingSpeaker = false;
 
   for (const sn of snippets) {
     // Claim every chapter that starts at or before this snippet (half-second tolerance).
@@ -30,8 +30,11 @@ export function buildParagraphs(snippets: Snippet[], { hideTags = true, chapters
     let text = cleanText(sn.text, hideTags);
     if (!text) { prevEnd = sn.start + sn.duration; continue; }
 
-    const speakerChange = /^(>>|-\s)/.test(text);
+    const speakerChange = pendingSpeaker || /^(>>|-\s)/.test(text);
     text = text.replace(/^>>\s*/, '');
+    // A lone ">>" snippet marks the speaker change for the next one instead of opening an empty paragraph.
+    pendingSpeaker = !text;
+    if (!text) { prevEnd = sn.start + sn.duration; continue; }
 
     let breakHere = !cur || speakerChange || !!pendingChapter || sn.start - prevEnd > 2.5;
     if (!breakHere && cur) {
