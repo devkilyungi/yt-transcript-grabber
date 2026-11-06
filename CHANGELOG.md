@@ -38,6 +38,7 @@ Rebuilt on the house design system, as a desktop app.
 
 - `--mark` token for highlights.
 - `data-link-box` exception in `lib/house/theme.js`, so the D key still toggles the theme while the autofocused link box is empty.
+- The kit's native `.select` wrapper rules are gone from `house.css`: every dropdown is now `components/Select.tsx`, a combobox over a top-layer listbox, styled in `app.css`.
 - Theme-swap circle in `lib/house/theme.js` given in percentages, not px. Chromium 152's composited clip-path reads px on `::view-transition-new/old(root)` as device pixels, so on a 2× screen the circle grew from halfway to the toggle. The site would hit the same bug in that Chromium.
 - `.skip` link styles, which the kit doesn't have, and focus moved to `#main` on view change.
 - Forced-colours rules for the switch, check box, meter and text marks, and print styles for a transcript.

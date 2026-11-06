@@ -188,10 +188,6 @@ textarea.input { padding: 10px 12px; min-height: 96px; resize: vertical; line-he
 .input[aria-invalid='true']:focus-visible { box-shadow: 0 0 0 3px var(--bad-soft); }
 .field-error { display: flex; gap: 6px; align-items: center; color: var(--bad); font-size: var(--text-xs); font-weight: 600; }
 .field-error svg.icon { width: 15px; height: 15px; }
-/* A chevron as a sibling, not a background image: the CSP allows no data: URLs. */
-.select { position: relative; display: grid; }
-.select select { appearance: none; padding-right: 38px; cursor: pointer; }
-.select svg.icon { position: absolute; right: 12px; top: 50%; translate: 0 -50%; width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
 .affix { display: flex; align-items: stretch; }
 .affix .input { border-radius: var(--radius-md) 0 0 var(--radius-md); }
 .affix span { display: grid; place-items: center; padding: 0 12px; border: 1px solid var(--line); border-left: 0; border-radius: 0 var(--radius-md) var(--radius-md) 0; background: var(--surface); color: var(--muted); font: 500 var(--text-sm) var(--mono); }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Select } from './Select';
 import { copyText } from '@/lib/browser';
 import { Icon } from './Sprite';
 
@@ -43,13 +44,8 @@ export function Downloads({ formats, onPick, disabled, label = 'Download' }: {
   const [fmt, setFmt] = useState(formats[0].fmt);
   return (
     <>
-      <label className="select">
-        <span className="sr">Download format</span>
-        <select className="input" value={fmt} disabled={disabled} onChange={e => setFmt(e.target.value)}>
-          {formats.map(f => <option key={f.fmt} value={f.fmt} disabled={f.disabled}>{f.label}</option>)}
-        </select>
-        <Icon name="chev" />
-      </label>
+      <Select aria-label="Download format" value={fmt} disabled={disabled} onChange={setFmt}
+        options={formats.map(f => ({ value: f.fmt, label: f.label, hint: f.disabled ? 'none yet' : undefined }))} />
       <button className="btn" type="button" disabled={disabled || formats.find(f => f.fmt === fmt)?.disabled} onClick={() => onPick(fmt)}><Icon name="down" />{label}</button>
     </>
   );

@@ -14,6 +14,7 @@ import { CopyButton, Downloads, type Format as DownloadFormat } from '../Control
 import { Icon } from '../Sprite';
 import { layoutRows, Transcript as Reader } from './Transcript';
 import { NotesPopover } from './NotesPopover';
+import { Select } from '../Select';
 
 const WPM = 230;
 const FIND_DEBOUNCE_MS = 120;
@@ -336,29 +337,20 @@ function Options({ data, source, prefs, setPref, busy, translatingTo, onLanguage
       <Switch label="Hide sound cues" hint="[Music], [Applause], ♪" checked={prefs.tags} onChange={on => setPref('tags', on)} />
       <div className="field">
         <label htmlFor="lang">Language</label>
-        <div className="select">
-          <select id="lang" className="input" value={langValue} disabled={tracks.length < 2} aria-describedby="lang-hint"
-            onChange={e => {
-              const [code, generated] = e.target.value.split('|');
-              setLangPick(e.target.value);
-              onLanguage(code, generated === '1');
-            }}>
-            {tracks.map(l => <option key={`${l.code}|${l.generated}`} value={`${l.code}|${l.generated ? 1 : 0}`}>{l.name}</option>)}
-          </select>
-          <Icon name="chev" />
-        </div>
+        <Select id="lang" value={langValue} disabled={tracks.length < 2} aria-describedby="lang-hint"
+          onChange={v => {
+            const [code, generated] = v.split('|');
+            setLangPick(v);
+            onLanguage(code, generated === '1');
+          }}
+          options={tracks.map(l => ({ value: `${l.code}|${l.generated ? 1 : 0}`, label: l.name }))} />
         <small className="muted" id="lang-hint">{source ? (source.isGenerated ? 'Auto-generated captions' : 'Captions by the creator') : ''}</small>
       </div>
       <div className="field">
         <label htmlFor="tlang">Translate</label>
-        <div className="select">
-          <select id="tlang" className="input" value={translatingTo ?? data?.translation?.code ?? ''} aria-describedby="tlang-hint"
-            disabled={!translations.length || translatingTo != null} onChange={e => onTranslate(e.target.value)}>
-            <option value="">Original</option>
-            {translations.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
-          </select>
-          <Icon name="chev" />
-        </div>
+        <Select id="tlang" value={translatingTo ?? data?.translation?.code ?? ''} aria-describedby="tlang-hint"
+          disabled={!translations.length || translatingTo != null} onChange={onTranslate}
+          options={[{ value: '', label: 'Original' }, ...translations.map(l => ({ value: l.code, label: l.name }))]} />
         <small className="muted" id="tlang-hint">
           {!source ? '' : !translations.length ? 'Not offered for this video' : data?.translation?.onDevice ? 'Translated on this device' : 'Via YouTube'}
         </small>
