@@ -32,8 +32,8 @@ export function Select({ options, name, value, defaultValue, onChange, ...button
     const b = btn.current, l = list.current;
     if (!b || !l) return;
     const a = b.getBoundingClientRect(), h = l.offsetHeight; // 0 before it opens, so the first placement is below and onToggle flips it if needed
-    l.style.left = `${a.left}px`;
-    l.style.width = `${a.width}px`;
+    l.style.minWidth = `${a.width}px`; // at least the field's width, wider when a label needs it so rows don't wrap
+    l.style.left = `${Math.max(8, Math.min(a.left, innerWidth - l.offsetWidth - 8))}px`; // kept on screen once it has a width
     l.style.top = `${a.bottom + h + 14 > innerHeight && a.top > h + 14 ? a.top - h - 6 : a.bottom + 6}px`; // flips above when there's no room below
   };
   useEffect(() => {
