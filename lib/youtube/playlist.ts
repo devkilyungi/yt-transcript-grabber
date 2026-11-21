@@ -50,11 +50,11 @@ function toVideo(item: YTNodes.PlaylistVideo | YTNodes.LockupView | YTNodes.Reel
     return { id: item.id, title: item.title.toString(), duration: item.duration?.seconds || null };
   }
   if (item.is(YTNodes.LockupView)) {
-    if (item.content_type !== 'VIDEO') return null;
+    if (item.content_type !== 'VIDEO' || !item.content_id) return null;
     const badge = item.content_image?.is(YTNodes.ThumbnailView)
       ? item.content_image.overlays.flatMap(o => (o.is(YTNodes.ThumbnailOverlayBadgeView) ? o.badges : [])).find(b => parseClock(b.text) != null)
       : undefined;
-    return { id: item.content_id, title: item.metadata?.title.toString() || '', duration: badge ? parseClock(badge.text) : null };
+    return { id: item.content_id, title: item.metadata?.title?.toString() || '', duration: badge ? parseClock(badge.text) : null };
   }
   return null;
 }
